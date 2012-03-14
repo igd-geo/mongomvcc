@@ -6,12 +6,15 @@ repositories.remote << Buildr::Bnd.remote_repository
 repositories.release_to = 'https://oss.sonatype.org/service/local/staging/deploy/maven2'
 
 MONGODB = 'org.mongodb:mongo-java-driver:jar:2.7.3'
+TROVE = 'net.sf.trove4j:trove4j:jar:3.0.2'
+GUAVA = 'com.google.guava:guava:jar:11.0.2'
 
 define 'mongomvcc' do
   project.version = '0.3.0'
   project.group = 'de.fhg.igd'
   
-  compile.with MONGODB
+  compile.with MONGODB, TROVE, GUAVA
+  compile.options.lint = 'all'
   
   package(:bundle).tap do |bnd|
     bnd['Import-Package'] = "*"
