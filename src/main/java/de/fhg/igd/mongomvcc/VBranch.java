@@ -43,8 +43,9 @@ public interface VBranch {
 	/**
 	 * Commit objects that have been added or changed in this branch
 	 * to the database
+	 * @return the new commit's ID (CID)
 	 */
-	void commit();
+	long commit();
 	
 	/**
 	 * Resets this branch (i.e. discards all changes made since

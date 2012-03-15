@@ -525,4 +525,31 @@ public class MongoDBVDatabaseTest {
 		bb4.get(test4);
 		assertArrayEquals(test, test4);
 	}
+	
+	/**
+	 * Tests if a previous version of a collection can be checked out
+	 * @throws Exception if something goes wrong
+	 */
+	@Test
+	public void goBackInTime() throws Exception {
+		Map<String, Object> max = putPerson("Max", 6);
+		long oldCid = _master.commit();
+		
+		VCollection persons = _master.getCollection("persons");
+		Map<String, Object> max2 = persons.findOne(_factory.createDocument("name", "Max"));
+		assertEquals(6, max2.get("age"));
+		
+		max.put("age", 7);
+		persons.insert(max);
+		_master.commit();
+		
+		persons = _master.getCollection("persons");
+		max2 = persons.findOne(_factory.createDocument("name", "Max"));
+		assertEquals(7, max2.get("age"));
+		
+		VBranch oldMaster = _db.checkout(String.valueOf(oldCid));
+		persons = oldMaster.getCollection("persons");
+		max2 = persons.findOne(_factory.createDocument("name", "Max"));
+		assertEquals(6, max2.get("age"));
+	}
 }

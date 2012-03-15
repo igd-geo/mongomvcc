@@ -28,7 +28,9 @@ import de.fhg.igd.mongomvcc.VFactory;
 import de.fhg.igd.mongomvcc.impl.MongoDBVFactory;
 
 /**
- * Demonstrates the use of MongoMVCC in 5 minutes
+ * <p>Demonstrates the use of MongoMVCC in 5 minutes.</p>
+ * <p>See the <a href="https://github.com/igd-geo/mongomvcc/wiki/5-Minutes-Tutorial">online
+ * tutorial</a> for a complete description.</p>
  * @author Michel Kraemer
  */
 public class FiveMinutes {
@@ -56,7 +58,7 @@ public class FiveMinutes {
 		persons.insert(factory.createDocument("name", "Peter"));
 		
 		// 3. Commit index to the database
-		master.commit();
+		long firstCid = master.commit();
 		
 		// 4. Read documents from the database
 		VCursor c = persons.find();
@@ -75,10 +77,20 @@ public class FiveMinutes {
 		
 		// 5. Make another commit
 		persons.insert(factory.createDocument("name", "Max"));
+		elvis.put("age", 4);
+		persons.insert(elvis);
 		master.commit();
 		
 		// 6. Checkout a previous version
-		// TODO not implemented yet
+		System.out.println("There are " + persons.find().size() + " persons");
+		Map<String, Object> elvis3 = persons.findOne(factory.createDocument("name", "Elvis"));
+		System.out.println("Elvis is now " + elvis3.get("age") + " years old");
+		
+		VBranch oldMaster = db.checkout(String.valueOf(firstCid));
+		VCollection oldPersons = oldMaster.getCollection("persons");
+		System.out.println("Previously, there were only " + oldPersons.find().size() + " persons");
+		Map<String, Object> oldElvis = oldPersons.findOne(factory.createDocument("name", "Elvis"));
+		System.out.println("Last year, Elvis was " + oldElvis.get("age") + " years old");
 		
 		// 7. Drop the database
 		db.drop();

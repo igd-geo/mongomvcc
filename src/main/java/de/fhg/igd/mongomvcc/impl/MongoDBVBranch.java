@@ -150,7 +150,7 @@ public class MongoDBVBranch implements VBranch {
 	}
 	
 	@Override
-	public void commit() {
+	public long commit() {
 		Index idx = getIndex();
 		//clone dirty objects because we clear them below
 		Map<String, TLongLongHashMap> dos = new HashMap<String, TLongLongHashMap>(idx.getDirtyObjects());
@@ -172,6 +172,8 @@ public class MongoDBVBranch implements VBranch {
 
 		//reset index
 		idx.clearDirtyObjects();
+		
+		return c.getCID();
 	}
 	
 	@Override
