@@ -31,6 +31,12 @@ define 'mongomvcc' do
   sign_artifact(package(:bundle).pom)
 end
 
+define 'five-minutes-tutorial', :base_dir => 'examples/five-minutes-tutorial' do
+  project.version = '1.0.0'
+  project.group = 'de.fhg.igd'
+  compile.with projects('mongomvcc')
+end
+
 def create_pom(pkg, deps)
  file(_(:target, "pom.xml")) do |file|
    Dir.mkdir(_(:target)) unless FileTest.exists?(_(:target))
