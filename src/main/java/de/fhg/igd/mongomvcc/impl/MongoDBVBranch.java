@@ -41,8 +41,6 @@ import de.fhg.igd.mongomvcc.util.Either;
  * This ensures isolation. If two threads try to create a commit with the
  * same head, the {@link #commit()} method will fail. The rule is: come first,
  * serve first.</p>
- * TODO In the future, if two commits have the same parent a new branch
- * should be created.
  * <p><strong>Thread-safety:</strong> this class is thread-safe. Instances
  * can be shared between threads, but each thread has its own index and head.</p>
  * @author Michel Kraemer

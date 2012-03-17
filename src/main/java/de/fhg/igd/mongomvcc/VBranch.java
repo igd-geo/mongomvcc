@@ -49,6 +49,13 @@ public interface VBranch {
 	 * Commit objects that have been added or changed in this branch
 	 * to the database
 	 * @return the new commit's ID (CID)
+	 * @throws VException if the branch is named and the branch's head
+	 * could not be updated in the database, because it already has been
+	 * updated somewhere else (most likely in another thread). If this
+	 * happens, the commit has already been fully performed and
+	 * {@link #getHead()} will return the new CID. The caller then has the
+	 * chance to call {@link VDatabase#createBranch(String, long)} to
+	 * create a new named branch based on this CID.
 	 */
 	long commit();
 	
