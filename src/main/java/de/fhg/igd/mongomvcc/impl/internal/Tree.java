@@ -100,15 +100,20 @@ public class Tree {
 	 * Adds a named branch
 	 * @param name the branch's name
 	 * @param headCID the CID of the head commit the branch points to
-	 * @throws VException if there already is a branch with the given name
+	 * @throws VException if there already is a branch with the given name or
+	 * if the given head CID could not be resolved to an existing commit
 	 */
 	public void addBranch(String name, long headCID) {
 		//synchronize here, because we first check for branch existence
 		//and then we write
 		synchronized(this) {
+			//check prerequisites
 			if (_branches.findOne(name) != null) {
 				throw new VException("A branch with the name " + name + " already exists");
 			}
+			resolveCommit(headCID);
+			
+			//create branch
 			DBObject o = new BasicDBObject();
 			o.put("_id", name);
 			o.put(CID, headCID);

@@ -23,6 +23,11 @@ package de.fhg.igd.mongomvcc;
  */
 public interface VBranch {
 	/**
+	 * @return the CID of the branch's head
+	 */
+	long getHead();
+	
+	/**
 	 * <p>Gets or creates a database collection. Collections have no special
 	 * meaning, they are just used to group objects.</p>
 	 * <p>The collection's state depends on the branch currently checkout

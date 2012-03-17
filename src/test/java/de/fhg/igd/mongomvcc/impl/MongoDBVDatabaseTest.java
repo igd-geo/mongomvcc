@@ -571,4 +571,65 @@ public class MongoDBVDatabaseTest {
 		max2 = persons.findOne(_factory.createDocument("name", "Max"));
 		assertEquals(6, max2.get("age"));
 	}
+	
+	/**
+	 * Tries to create a branch with a name already used
+	 */
+	@Test(expected = VException.class)
+	public void createExistingBranch() {
+		_db.createBranch(VConstants.MASTER, _master.getHead());
+	}
+	
+	/**
+	 * Tries to create a branch pointing to a non-existent commit
+	 */
+	@Test(expected = VException.class)
+	public void createBranchInvalidCID() {
+		_db.createBranch("BLABLA", _master.getHead() + 1000L);
+	}
+	
+	/**
+	 * Creates another branch and tests its isolation against the master branch
+	 */
+	@Test
+	public void branch() {
+		putPerson("Peter", 26);
+		long peterCid = _master.commit();
+		
+		VBranch maxBranch = _db.createBranch("Max", peterCid);
+		VCollection maxPersons = maxBranch.getCollection("persons");
+		assertEquals(1, maxPersons.find().size());
+		
+		maxPersons.insert(_factory.createDocument("name", "Max"));
+		long maxCid = maxBranch.commit();
+		
+		maxBranch = _db.checkout("Max");
+		assertEquals(maxCid, maxBranch.getHead());
+		
+		VBranch peterBranch = _db.checkout(VConstants.MASTER);
+		assertEquals(peterCid, peterBranch.getHead());
+		
+		maxPersons = maxBranch.getCollection("persons");
+		VCollection peterPersons = peterBranch.getCollection("persons");
+		assertEquals(2, maxPersons.find().size());
+		assertEquals(1, peterPersons.find().size());
+		assertNotNull(maxPersons.findOne(_factory.createDocument("name", "Max")));
+		assertNull(peterPersons.findOne(_factory.createDocument("name", "Max")));
+		
+		putPerson("Elvis", 3);
+		long elvisCid = _master.commit();
+		
+		maxBranch = _db.checkout("Max");
+		peterBranch = _db.checkout(VConstants.MASTER);
+		assertEquals(maxCid, maxBranch.getHead());
+		assertEquals(elvisCid, peterBranch.getHead());
+		maxPersons = maxBranch.getCollection("persons");
+		peterPersons = peterBranch.getCollection("persons");
+		assertEquals(2, maxPersons.find().size());
+		assertEquals(2, peterPersons.find().size());
+		assertNotNull(maxPersons.findOne(_factory.createDocument("name", "Max")));
+		assertNull(peterPersons.findOne(_factory.createDocument("name", "Max")));
+		assertNotNull(peterPersons.findOne(_factory.createDocument("name", "Elvis")));
+		assertNull(maxPersons.findOne(_factory.createDocument("name", "Elvis")));
+	}
 }

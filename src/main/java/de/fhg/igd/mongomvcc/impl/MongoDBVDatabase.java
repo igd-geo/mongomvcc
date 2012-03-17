@@ -94,6 +94,12 @@ public class MongoDBVDatabase implements VDatabase {
 	}
 	
 	@Override
+	public VBranch createBranch(String name, long headCID) {
+		_tree.addBranch(name, headCID);
+		return new MongoDBVBranch(name, _tree, _db, _counter);
+	}
+	
+	@Override
 	public VCounter getCounter() {
 		return _counter;
 	}

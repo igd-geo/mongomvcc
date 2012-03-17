@@ -26,7 +26,7 @@ package de.fhg.igd.mongomvcc;
  * <p>The following abbreviations are used throughout the framework:
  * <dl>
  * <dt>CID</dt><dd>Commit ID (unique for each commit in the tree)</dd>
- * <dt>UID</dt><dd>The application-specific unqiue key for each database
+ * <dt>UID</dt><dd>The application-specific unique key for each database
  * object. This ID is independent from the various versions of the object, it
  * exists throughout the whole lifetime of an object, regardless which
  * representation it currently has. Objects added to the database will
@@ -41,7 +41,7 @@ public interface VDatabase {
 	 * @param name the database name
 	 * @throws VException if connection failed
 	 */
-	void connect(String name) throws VException;
+	void connect(String name);
 	
 	/**
 	 * Checks out a named branch from the database
@@ -58,6 +58,16 @@ public interface VDatabase {
 	 * @throws VException if there is not commit with the given CID
 	 */
 	VBranch checkout(long cid);
+	
+	/**
+	 * Creates a new named branch whose head is set to the given CID
+	 * @param name the branch's name
+	 * @param head the branch's head CID
+	 * @return the branch
+	 * @throws VException if there already is a branch with the given name or
+	 * if the given head CID could not be resolved to an existing commit
+	 */
+	VBranch createBranch(String name, long headCID);
 	
 	/**
 	 * Deletes the whole database. Be very careful with this method!

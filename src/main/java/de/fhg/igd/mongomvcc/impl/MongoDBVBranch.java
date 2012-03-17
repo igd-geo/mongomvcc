@@ -111,7 +111,7 @@ public class MongoDBVBranch implements VBranch {
 	/**
 	 * @return the thread-local head of this branch
 	 */
-	private Commit getHead() {
+	private Commit getHeadCommit() {
 		Commit r = _head.get();
 		if (r == null) {
 			if (_nameOrCid.isLeft()) {
@@ -130,6 +130,11 @@ public class MongoDBVBranch implements VBranch {
 	 */
 	private void updateHead(Commit newHead) {
 		_head.set(newHead);
+	}
+	
+	@Override
+	public long getHead() {
+		return getHeadCommit().getCID();
 	}
 	
 	@Override
@@ -162,7 +167,7 @@ public class MongoDBVBranch implements VBranch {
 	public Index getIndex() {
 		Index r = _index.get();
 		if (r == null) {
-			r = new Index(getHead(), _tree);
+			r = new Index(getHeadCommit(), _tree);
 			_index.set(r);
 		}
 		return r;
@@ -173,7 +178,7 @@ public class MongoDBVBranch implements VBranch {
 		Index idx = getIndex();
 		//clone dirty objects because we clear them below
 		Map<String, TLongLongHashMap> dos = new HashMap<String, TLongLongHashMap>(idx.getDirtyObjects());
-		Commit head = getHead();
+		Commit head = getHeadCommit();
 		Commit c = new Commit(_counter.getNextId(), head.getCID(), dos);
 		_tree.addCommit(c);
 		updateHead(c);
