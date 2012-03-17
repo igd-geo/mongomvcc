@@ -21,6 +21,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
@@ -631,5 +632,36 @@ public class MongoDBVDatabaseTest {
 		assertNull(peterPersons.findOne(_factory.createDocument("name", "Max")));
 		assertNotNull(peterPersons.findOne(_factory.createDocument("name", "Elvis")));
 		assertNull(maxPersons.findOne(_factory.createDocument("name", "Elvis")));
+	}
+	
+	/**
+	 * Creates another branch after a conflict has happened
+	 */
+	@Test
+	public void createBranchAfterConflict() {
+		VBranch master2 = _db.checkout(VConstants.MASTER);
+		putPerson("Max", 3);
+
+		VCollection persons2 = master2.getCollection("persons");
+		persons2.insert(_factory.createDocument("name", "Elvis"));
+
+		long masterCid = _master.commit();
+		try {
+			master2.commit();
+			fail("We expect a VException here since the branch's head " +
+					"could not be updated");
+		} catch (VException e) {
+			//this is what we expect here
+		}
+		
+		//committing master2 failed, but the commit is still there
+		long master2Cid = master2.getHead();
+		assertTrue(masterCid != master2Cid);
+		_db.createBranch("master2", master2Cid);
+		
+		VBranch master = _db.checkout(VConstants.MASTER);
+		assertEquals(masterCid, master.getHead());
+		master2 = _db.checkout("master2");
+		assertEquals(master2Cid, master2.getHead());
 	}
 }

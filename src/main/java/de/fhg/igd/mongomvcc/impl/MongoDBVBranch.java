@@ -183,6 +183,15 @@ public class MongoDBVBranch implements VBranch {
 		_tree.addCommit(c);
 		updateHead(c);
 		
+		//reset index
+		idx.clearDirtyObjects();
+		
+		//if we fail below, the commit has already been performed and the
+		//index is clear. failing below simply means the named branch's
+		//head could not be updated. If the caller wants to keep the commit
+		//he/she just has to create a new named branch based on this
+		//branch's head.
+		
 		//update named branch's head
 		if (_nameOrCid.isLeft()) {
 			//synchronize the following part, because we first resolve the branch
@@ -198,9 +207,6 @@ public class MongoDBVBranch implements VBranch {
 			}
 		}
 
-		//reset index
-		idx.clearDirtyObjects();
-		
 		return c.getCID();
 	}
 	

@@ -97,7 +97,8 @@ public class Tree {
 	}
 	
 	/**
-	 * Adds a named branch
+	 * Adds a named branch. Always waits for the database to fsync before
+	 * returning. This guarantees all threads will see the change.
 	 * @param name the branch's name
 	 * @param headCID the CID of the head commit the branch points to
 	 * @throws VException if there already is a branch with the given name or
@@ -117,7 +118,7 @@ public class Tree {
 			DBObject o = new BasicDBObject();
 			o.put("_id", name);
 			o.put(CID, headCID);
-			_branches.insert(o);
+			_branches.insert(o, WriteConcern.FSYNC_SAFE);
 		}
 	}
 	
