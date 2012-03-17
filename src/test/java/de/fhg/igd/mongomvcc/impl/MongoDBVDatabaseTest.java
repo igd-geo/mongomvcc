@@ -254,7 +254,7 @@ public class MongoDBVDatabaseTest {
 		
 		//wait until other thread has obtained the same branch
 		while (!latch2.await(100, TimeUnit.MILLISECONDS)) {
-			//check if one of the threads did throw an exception meanwhile
+			//check if the other thread threw an exception meanwhile
 			if (ft1.isDone()) {
 				ft1.get();
 			}
@@ -265,6 +265,9 @@ public class MongoDBVDatabaseTest {
 
 		//insert new person and commit
 		putPerson("Max", 5);
+		
+		//wait for the other thread to exit
+		ft1.get();
 		
 		//should throw here because of a conflict
 		try {
