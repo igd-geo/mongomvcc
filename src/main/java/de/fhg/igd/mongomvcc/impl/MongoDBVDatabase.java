@@ -81,7 +81,15 @@ public class MongoDBVDatabase implements VDatabase {
 	
 	@Override
 	public VBranch checkout(String name) {
+		//check if the branch exists. throws if it doesn't
+		_tree.resolveBranch(name);
 		return new MongoDBVBranch(name, _tree, _db, _counter);
+	}
+	
+	public VBranch checkout(long cid) {
+		//check if the commit exists. throws if it doesn't
+		_tree.resolveCommit(cid);
+		return new MongoDBVBranch(cid, _tree, _db, _counter);
 	}
 	
 	@Override

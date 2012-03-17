@@ -530,6 +530,22 @@ public class MongoDBVDatabaseTest {
 	}
 	
 	/**
+	 * Tests if checking out a non-existing branch throws an exception
+	 */
+	@Test(expected = VException.class)
+	public void checkoutNonExistingBranch() {
+		_db.checkout("BLABLA");
+	}
+	
+	/**
+	 * Tests if checking out a non-existing commit throws an exception
+	 */
+	@Test(expected = VException.class)
+	public void checkoutNonExistingCID() {
+		_db.checkout(1234L);
+	}
+	
+	/**
 	 * Tests if a previous version of a collection can be checked out
 	 * @throws Exception if something goes wrong
 	 */
@@ -550,7 +566,7 @@ public class MongoDBVDatabaseTest {
 		max2 = persons.findOne(_factory.createDocument("name", "Max"));
 		assertEquals(7, max2.get("age"));
 		
-		VBranch oldMaster = _db.checkout(String.valueOf(oldCid));
+		VBranch oldMaster = _db.checkout(oldCid);
 		persons = oldMaster.getCollection("persons");
 		max2 = persons.findOne(_factory.createDocument("name", "Max"));
 		assertEquals(6, max2.get("age"));

@@ -44,11 +44,20 @@ public interface VDatabase {
 	void connect(String name) throws VException;
 	
 	/**
-	 * Checks out a branch from the database
-	 * @param name the name of the branch to checkout (may also be a CID)
+	 * Checks out a named branch from the database
+	 * @param name the branch's name
 	 * @return the branch
+	 * @throws VException if the branch does not exist yet
 	 */
 	VBranch checkout(String name);
+	
+	/**
+	 * Checks out an unnamed branch from the database
+	 * @param cid the CID of the commit which should be the branch's root
+	 * @return the branch
+	 * @throws VException if there is not commit with the given CID
+	 */
+	VBranch checkout(long cid);
 	
 	/**
 	 * Deletes the whole database. Be very careful with this method!

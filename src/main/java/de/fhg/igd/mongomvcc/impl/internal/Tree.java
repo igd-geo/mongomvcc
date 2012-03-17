@@ -133,30 +133,17 @@ public class Tree {
 	}
 	
 	/**
-	 * Resolves the head commit of a named branch or resolves the commit
-	 * according to its CID
-	 * @param nameOrID the name of the branch to resolve or the CID of
-	 * the commit to resolve (in the latter case, the string must represent a
-	 * long value)
+	 * Resolves the head commit of a named branch
+	 * @param name the name of the branch to resolve
 	 * @return the resolved commit
 	 * @throws VException if the commit could not be resolved
 	 */
-	public Commit resolve(String nameOrID) {
-		DBObject branch = _branches.findOne(nameOrID);
-		long cid;
-		if (branch != null) {
-			//nameOrID is a branch name, get the branch's head
-			cid = (Long)branch.get(CID);
-		} else {
-			//check if nameOrID is a long value
-			try {
-				cid = Long.parseLong(nameOrID);
-			} catch (NumberFormatException e) {
-				throw new VException("Invalid commit ID: " + nameOrID);
-			}
+	public Commit resolveBranch(String name) {
+		DBObject branch = _branches.findOne(name);
+		if (branch == null) {
+			throw new VException("Unknown branch: " + name);
 		}
-		//resolve CID to commit
-		return resolveCommit(cid);
+		return resolveCommit((Long)branch.get(CID));
 	}
 	
 	/**

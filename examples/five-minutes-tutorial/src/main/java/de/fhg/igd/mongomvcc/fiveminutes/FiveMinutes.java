@@ -86,7 +86,7 @@ public class FiveMinutes {
 		Map<String, Object> elvis3 = persons.findOne(factory.createDocument("name", "Elvis"));
 		System.out.println("Elvis is now " + elvis3.get("age") + " years old");
 		
-		VBranch oldMaster = db.checkout(String.valueOf(firstCid));
+		VBranch oldMaster = db.checkout(firstCid);
 		VCollection oldPersons = oldMaster.getCollection("persons");
 		System.out.println("Previously, there were only " + oldPersons.find().size() + " persons");
 		Map<String, Object> oldElvis = oldPersons.findOne(factory.createDocument("name", "Elvis"));

@@ -33,6 +33,7 @@ import de.fhg.igd.mongomvcc.VLargeCollection;
 import de.fhg.igd.mongomvcc.impl.internal.Commit;
 import de.fhg.igd.mongomvcc.impl.internal.Index;
 import de.fhg.igd.mongomvcc.impl.internal.Tree;
+import de.fhg.igd.mongomvcc.util.Either;
 
 /**
  * <p>Implementation of {@link VBranch} for MongoDB. Each
@@ -60,9 +61,9 @@ public class MongoDBVBranch implements VBranch {
 	private final ThreadLocal<Index> _index = new ThreadLocal<Index>();
 	
 	/**
-	 * The branch's name
+	 * The branch's name or root CID
 	 */
-	private final String _name;
+	private final Either<String, Long> _nameOrCid;
 	
 	/**
 	 * The tree of commits
@@ -87,7 +88,21 @@ public class MongoDBVBranch implements VBranch {
 	 * @param counter a counter to generate unique IDs
 	 */
 	public MongoDBVBranch(String name, Tree tree, DB db, VCounter counter) {
-		_name = name;
+		_nameOrCid = new Either<String, Long>(name);
+		_tree = tree;
+		_db = db;
+		_counter = counter;
+	}
+	
+	/**
+	 * Constructs a new unnamed branch object (not the branch itself)
+	 * @param cid the branch's root CID
+	 * @param tree the tree of commits
+	 * @param db the MongoDB database object
+	 * @param counter a counter to generate unique IDs
+	 */
+	public MongoDBVBranch(long cid, Tree tree, DB db, VCounter counter) {
+		_nameOrCid = new Either<String, Long>(cid);
 		_tree = tree;
 		_db = db;
 		_counter = counter;
@@ -99,7 +114,11 @@ public class MongoDBVBranch implements VBranch {
 	private Commit getHead() {
 		Commit r = _head.get();
 		if (r == null) {
-			r = _tree.resolve(_name);
+			if (_nameOrCid.isLeft()) {
+				r = _tree.resolveBranch(_nameOrCid.getLeft());
+			} else {
+				r = _tree.resolveCommit(_nameOrCid.getRight());
+			}
 			_head.set(r);
 		}
 		return r;
@@ -159,15 +178,19 @@ public class MongoDBVBranch implements VBranch {
 		_tree.addCommit(c);
 		updateHead(c);
 		
-		//synchronize the following part, because we first resolve the branch
-		//and then update it
-		synchronized (this) {
-			//check for conflicts (i.e. if another thread has already updated the branch's head)
-			if (_tree.resolve(_name).getCID() != c.getParentCID()) {
-				throw new VException("Branch " + _name + " has already been " +
-						"updated by another commit");
+		//update named branch's head
+		if (_nameOrCid.isLeft()) {
+			//synchronize the following part, because we first resolve the branch
+			//and then update it
+			synchronized (this) {
+				//check for conflicts (i.e. if another thread has already updated the branch's head)
+				String name = _nameOrCid.getLeft();
+				if (_tree.resolveBranch(name).getCID() != c.getParentCID()) {
+					throw new VException("Branch " + name + " has already been " +
+							"updated by another commit");
+				}
+				_tree.updateBranchHead(name, c.getCID());
 			}
-			_tree.updateBranchHead(_name, c.getCID());
 		}
 
 		//reset index
