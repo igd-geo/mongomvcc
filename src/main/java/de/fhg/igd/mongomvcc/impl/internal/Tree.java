@@ -139,6 +139,15 @@ public class Tree {
 	}
 	
 	/**
+	 * Checks if a branch with the given name exists
+	 * @param name the branch's name
+	 * @return true if the branch exists, false otherwise
+	 */
+	public boolean existsBranch(String name) {
+		return _branches.count(new BasicDBObject("_id", name)) > 0;
+	}
+	
+	/**
 	 * Resolves the head commit of a named branch
 	 * @param name the name of the branch to resolve
 	 * @return the resolved commit
@@ -150,6 +159,15 @@ public class Tree {
 			throw new VException("Unknown branch: " + name);
 		}
 		return resolveCommit((Long)branch.get(CID));
+	}
+	
+	/**
+	 * Checks if a commit with a given CID exists
+	 * @param cid the commit's ID (CID)
+	 * @return true if the commit exists, false otherwise
+	 */
+	public boolean existsCommit(long cid) {
+		return _commits.count(new BasicDBObject("_id", cid)) > 0;
 	}
 	
 	/**
