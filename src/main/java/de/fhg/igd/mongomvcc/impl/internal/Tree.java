@@ -43,7 +43,6 @@ public class Tree implements VHistory {
 	/**
 	 * Attribute names
 	 */
-	private final static String ID = "_id";
 	private final static String CID = "cid";
 	private final static String PARENT_CID = "parent";
 	private final static String OBJECTS = "objects";
@@ -86,7 +85,7 @@ public class Tree implements VHistory {
 	 */
 	public void addCommit(Commit commit) {
 		DBObject o = new BasicDBObject();
-		o.put(ID, commit.getCID());
+		o.put(MongoDBConstants.ID, commit.getCID());
 		o.put(PARENT_CID, commit.getParentCID());
 		DBObject objs = new BasicDBObject();
 		for (Map.Entry<String, TLongLongHashMap> e : commit.getObjects().entrySet()) {
@@ -122,7 +121,7 @@ public class Tree implements VHistory {
 			
 			//create branch
 			DBObject o = new BasicDBObject();
-			o.put(ID, name);
+			o.put(MongoDBConstants.ID, name);
 			o.put(CID, headCID);
 			_branches.insert(o, WriteConcern.FSYNC_SAFE);
 		}
@@ -139,7 +138,7 @@ public class Tree implements VHistory {
 	 * @param headCID the CID of the new head
 	 */
 	public void updateBranchHead(String name, long headCID) {
-		_branches.update(new BasicDBObject(ID, name),
+		_branches.update(new BasicDBObject(MongoDBConstants.ID, name),
 				new BasicDBObject("$set", new BasicDBObject(CID, headCID)),
 				false, false, WriteConcern.FSYNC_SAFE);
 	}
@@ -150,7 +149,7 @@ public class Tree implements VHistory {
 	 * @return true if the branch exists, false otherwise
 	 */
 	public boolean existsBranch(String name) {
-		return _branches.count(new BasicDBObject(ID, name)) > 0;
+		return _branches.count(new BasicDBObject(MongoDBConstants.ID, name)) > 0;
 	}
 	
 	/**
@@ -173,7 +172,7 @@ public class Tree implements VHistory {
 	 * @return true if the commit exists, false otherwise
 	 */
 	public boolean existsCommit(long cid) {
-		return _commits.count(new BasicDBObject(ID, cid)) > 0;
+		return _commits.count(new BasicDBObject(MongoDBConstants.ID, cid)) > 0;
 	}
 	
 	/**
@@ -222,11 +221,11 @@ public class Tree implements VHistory {
 			throw new VException("Unknown commit: " + cid);
 		}
 		DBCursor c = _commits.find(new BasicDBObject(PARENT_CID, cid),
-				new BasicDBObject(ID, 1));
+				new BasicDBObject(MongoDBConstants.ID, 1));
 		long[] r = new long[c.count()];
 		int i = 0;
 		for (DBObject o : c) {
-			r[i++] = (Long)o.get(ID);
+			r[i++] = (Long)o.get(MongoDBConstants.ID);
 		}
 		return r;
 	}
