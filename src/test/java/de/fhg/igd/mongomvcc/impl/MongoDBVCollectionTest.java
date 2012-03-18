@@ -17,18 +17,11 @@
 
 package de.fhg.igd.mongomvcc.impl;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -38,74 +31,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-import de.fhg.igd.mongomvcc.VBranch;
 import de.fhg.igd.mongomvcc.VCollection;
-import de.fhg.igd.mongomvcc.VConstants;
 import de.fhg.igd.mongomvcc.VCursor;
-import de.fhg.igd.mongomvcc.VDatabase;
 import de.fhg.igd.mongomvcc.VException;
-import de.fhg.igd.mongomvcc.VFactory;
-import de.fhg.igd.mongomvcc.VHistory;
 
 /**
- * Tests the {@link MongoDBVDatabase}
+ * Tests the {@link MongoDBVCollection}
  * @author Michel Kraemer
  */
-public class MongoDBVDatabaseTest {
-	private VDatabase _db;
-	private VBranch _master;
-	private static final VFactory _factory = new MongoDBVFactory();
-	
-	/**
-	 * Before all unit tests run, make sure the database is clean
-	 */
-	@BeforeClass
-	public static void setUpClass() {
-		VDatabase db = _factory.createDatabase();
-		db.connect("mvcctest");
-		db.drop();
-	}
-	
-	/**
-	 * Setup test database
-	 */
-	@Before
-	public void setUp() {
-		_db = _factory.createDatabase();
-		_db.connect("mvcctest");
-		_master = _db.checkout(VConstants.MASTER);
-	}
-	
-	/**
-	 * Delete test database
-	 */
-	@After
-	public void tearDown() {
-		_db.drop();
-	}
-	
-	/**
-	 * Put a person into the database
-	 * @param name the person's name
-	 * @param age the person's age
-	 * @return the person (after the put)
-	 */
-	private Map<String, Object> putPerson(String name, int age) {
-		VCollection persons = _master.getCollection("persons");
-		assertNotNull(persons);
-		Map<String, Object> peter = new HashMap<String, Object>();
-		peter.put("name", name);
-		peter.put("age", age);
-		persons.insert(peter);
-		assertNotNull(peter.get("uid"));
-		return peter;
-	}
-	
+public class MongoDBVCollectionTest extends AbstractMongoDBVDatabaseTest {
 	/**
 	 * Tests if a person can be added into the local index
 	 */
@@ -476,252 +412,5 @@ public class MongoDBVDatabaseTest {
 		assertEquals(1, persons.find().size());
 		_master.rollback();
 		assertEquals(0, persons.find().size());
-	}
-	
-	/**
-	 * Tests if large objects can be saved in the database
-	 * @throws Exception if something goes wrong
-	 */
-	@Test
-	public void largeObject() throws Exception {
-		VCollection coll = _master.getLargeCollection("images");
-		byte[] test = new byte[1024 * 1024];
-		for (int i = 0; i < test.length; ++i) {
-			test[i] = (byte)(i & 0xFF);
-		}
-		Map<String, Object> obj = new HashMap<String, Object>();
-		obj.put("name", "Mona Lisa");
-		obj.put("data", test);
-		coll.insert(obj);
-		
-		VCursor vc = coll.find();
-		assertEquals(1, vc.size());
-		Map<String, Object> obj2 = vc.iterator().next();
-		assertEquals("Mona Lisa", obj2.get("name"));
-		assertArrayEquals(test, (byte[])obj2.get("data"));
-		
-		ByteArrayInputStream bais = new ByteArrayInputStream(test);
-		obj = new HashMap<String, Object>();
-		obj.put("name", "Mona Lisa");
-		obj.put("data", bais);
-		coll.insert(obj);
-		
-		Map<String, Object> obj3 = coll.findOne(_factory.createDocument("uid", obj.get("uid")));
-		assertEquals("Mona Lisa", obj3.get("name"));
-		InputStream is3 = (InputStream)obj3.get("data");
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		byte[] buf = new byte[64 * 1024];
-		int read;
-		while ((read = is3.read(buf)) > 0) {
-			baos.write(buf, 0, read);
-		}
-		assertArrayEquals(test, baos.toByteArray());
-		
-		ByteBuffer bb = ByteBuffer.wrap(test);
-		obj = new HashMap<String, Object>();
-		obj.put("name", "Mona Lisa");
-		obj.put("data", bb);
-		coll.insert(obj);
-		Map<String, Object> obj4 = coll.findOne(_factory.createDocument("uid", obj.get("uid")));
-		assertEquals("Mona Lisa", obj4.get("name"));
-		ByteBuffer bb4 = (ByteBuffer)obj4.get("data");
-		bb4.rewind();
-		byte[] test4 = new byte[bb4.remaining()];
-		bb4.get(test4);
-		assertArrayEquals(test, test4);
-	}
-	
-	/**
-	 * Tests if checking out a non-existing branch throws an exception
-	 */
-	@Test(expected = VException.class)
-	public void checkoutNonExistingBranch() {
-		_db.checkout("BLABLA");
-	}
-	
-	/**
-	 * Tests if checking out a non-existing commit throws an exception
-	 */
-	@Test(expected = VException.class)
-	public void checkoutNonExistingCID() {
-		_db.checkout(1234L);
-	}
-	
-	/**
-	 * Tests if a previous version of a collection can be checked out
-	 * @throws Exception if something goes wrong
-	 */
-	@Test
-	public void goBackInTime() throws Exception {
-		Map<String, Object> max = putPerson("Max", 6);
-		long oldCid = _master.commit();
-		
-		VCollection persons = _master.getCollection("persons");
-		Map<String, Object> max2 = persons.findOne(_factory.createDocument("name", "Max"));
-		assertEquals(6, max2.get("age"));
-		
-		max.put("age", 7);
-		persons.insert(max);
-		_master.commit();
-		
-		persons = _master.getCollection("persons");
-		max2 = persons.findOne(_factory.createDocument("name", "Max"));
-		assertEquals(7, max2.get("age"));
-		
-		VBranch oldMaster = _db.checkout(oldCid);
-		persons = oldMaster.getCollection("persons");
-		max2 = persons.findOne(_factory.createDocument("name", "Max"));
-		assertEquals(6, max2.get("age"));
-	}
-	
-	/**
-	 * Tries to create a branch with a name already used
-	 */
-	@Test(expected = VException.class)
-	public void createExistingBranch() {
-		_db.createBranch(VConstants.MASTER, _master.getHead());
-	}
-	
-	/**
-	 * Tries to create a branch pointing to a non-existent commit
-	 */
-	@Test(expected = VException.class)
-	public void createBranchInvalidCID() {
-		_db.createBranch("BLABLA", _master.getHead() + 1000L);
-	}
-	
-	/**
-	 * Creates another branch and tests its isolation against the master branch
-	 */
-	@Test
-	public void branch() {
-		putPerson("Peter", 26);
-		long peterCid = _master.commit();
-		
-		VBranch maxBranch = _db.createBranch("Max", peterCid);
-		VCollection maxPersons = maxBranch.getCollection("persons");
-		assertEquals(1, maxPersons.find().size());
-		
-		maxPersons.insert(_factory.createDocument("name", "Max"));
-		long maxCid = maxBranch.commit();
-		
-		maxBranch = _db.checkout("Max");
-		assertEquals(maxCid, maxBranch.getHead());
-		
-		VBranch peterBranch = _db.checkout(VConstants.MASTER);
-		assertEquals(peterCid, peterBranch.getHead());
-		
-		maxPersons = maxBranch.getCollection("persons");
-		VCollection peterPersons = peterBranch.getCollection("persons");
-		assertEquals(2, maxPersons.find().size());
-		assertEquals(1, peterPersons.find().size());
-		assertNotNull(maxPersons.findOne(_factory.createDocument("name", "Max")));
-		assertNull(peterPersons.findOne(_factory.createDocument("name", "Max")));
-		
-		putPerson("Elvis", 3);
-		long elvisCid = _master.commit();
-		
-		maxBranch = _db.checkout("Max");
-		peterBranch = _db.checkout(VConstants.MASTER);
-		assertEquals(maxCid, maxBranch.getHead());
-		assertEquals(elvisCid, peterBranch.getHead());
-		maxPersons = maxBranch.getCollection("persons");
-		peterPersons = peterBranch.getCollection("persons");
-		assertEquals(2, maxPersons.find().size());
-		assertEquals(2, peterPersons.find().size());
-		assertNotNull(maxPersons.findOne(_factory.createDocument("name", "Max")));
-		assertNull(peterPersons.findOne(_factory.createDocument("name", "Max")));
-		assertNotNull(peterPersons.findOne(_factory.createDocument("name", "Elvis")));
-		assertNull(maxPersons.findOne(_factory.createDocument("name", "Elvis")));
-	}
-	
-	/**
-	 * Creates another branch after a conflict has happened
-	 */
-	@Test
-	public void createBranchAfterConflict() {
-		VBranch master2 = _db.checkout(VConstants.MASTER);
-		putPerson("Max", 3);
-
-		VCollection persons2 = master2.getCollection("persons");
-		persons2.insert(_factory.createDocument("name", "Elvis"));
-
-		long masterCid = _master.commit();
-		try {
-			master2.commit();
-			fail("We expect a VException here since the branch's head " +
-					"could not be updated");
-		} catch (VException e) {
-			//this is what we expect here
-		}
-		
-		//committing master2 failed, but the commit is still there
-		long master2Cid = master2.getHead();
-		assertTrue(masterCid != master2Cid);
-		_db.createBranch("master2", master2Cid);
-		
-		VBranch master = _db.checkout(VConstants.MASTER);
-		assertEquals(masterCid, master.getHead());
-		master2 = _db.checkout("master2");
-		assertEquals(master2Cid, master2.getHead());
-	}
-	
-	/**
-	 * Tests if the history works correctly
-	 */
-	@Test
-	public void history() {
-		long root = _master.getHead();
-		putPerson("Max", 3);
-		long c1 = _master.commit();
-		putPerson("Peter", 26);
-		long c2 = _master.commit();
-		
-		VHistory h = _db.getHistory();
-		assertEquals(c1, h.getParent(c2));
-		assertEquals(root, h.getParent(c1));
-		assertEquals(0, h.getParent(root));
-		
-		assertArrayEquals(new long[] { root }, h.getChildren(0));
-		assertArrayEquals(new long[] { c1 }, h.getChildren(root));
-		assertArrayEquals(new long[] { c2 }, h.getChildren(c1));
-		assertArrayEquals(new long[0], h.getChildren(c2));
-		
-		VBranch master2 = _db.createBranch("master2", c1);
-		VCollection persons = master2.getCollection("persons");
-		persons.insert(_factory.createDocument("name", "Elvis"));
-		long c3 = master2.commit();
-		
-		h = _db.getHistory();
-		assertEquals(c1, h.getParent(c2));
-		assertEquals(c1, h.getParent(c3));
-		assertEquals(root, h.getParent(c1));
-		assertEquals(0, h.getParent(root));
-		
-		assertArrayEquals(new long[] { root }, h.getChildren(0));
-		assertArrayEquals(new long[] { c1 }, h.getChildren(root));
-		long[] c1c = h.getChildren(c1);
-		assertEquals(2, c1c.length);
-		assertTrue((c1c[0] == c2 && c1c[1] == c3) || (c1c[0] == c3 && c1c[1] == c2));
-		assertArrayEquals(new long[0], h.getChildren(c2));
-		assertArrayEquals(new long[0], h.getChildren(c3));
-	}
-	
-	/**
-	 * Tests if the history throws an exception if we try to
-	 * resolve a non-existent commit
-	 */
-	@Test(expected = VException.class)
-	public void historyThrowNonExistentCommit1() {
-		_db.getHistory().getParent(0);
-	}
-	
-	/**
-	 * Tests if the history throws an exception if we try to
-	 * resolve a non-existent commit
-	 */
-	@Test(expected = VException.class)
-	public void historyThrowNonExistentCommit2() {
-		_db.getHistory().getChildren(1000L);
 	}
 }
