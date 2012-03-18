@@ -50,6 +50,7 @@ import de.fhg.igd.mongomvcc.VCursor;
 import de.fhg.igd.mongomvcc.VDatabase;
 import de.fhg.igd.mongomvcc.VException;
 import de.fhg.igd.mongomvcc.VFactory;
+import de.fhg.igd.mongomvcc.VHistory;
 
 /**
  * Tests the {@link MongoDBVDatabase}
@@ -663,5 +664,64 @@ public class MongoDBVDatabaseTest {
 		assertEquals(masterCid, master.getHead());
 		master2 = _db.checkout("master2");
 		assertEquals(master2Cid, master2.getHead());
+	}
+	
+	/**
+	 * Tests if the history works correctly
+	 */
+	@Test
+	public void history() {
+		long root = _master.getHead();
+		putPerson("Max", 3);
+		long c1 = _master.commit();
+		putPerson("Peter", 26);
+		long c2 = _master.commit();
+		
+		VHistory h = _db.getHistory();
+		assertEquals(c1, h.getParent(c2));
+		assertEquals(root, h.getParent(c1));
+		assertEquals(0, h.getParent(root));
+		
+		assertArrayEquals(new long[] { root }, h.getChildren(0));
+		assertArrayEquals(new long[] { c1 }, h.getChildren(root));
+		assertArrayEquals(new long[] { c2 }, h.getChildren(c1));
+		assertArrayEquals(new long[0], h.getChildren(c2));
+		
+		VBranch master2 = _db.createBranch("master2", c1);
+		VCollection persons = master2.getCollection("persons");
+		persons.insert(_factory.createDocument("name", "Elvis"));
+		long c3 = master2.commit();
+		
+		h = _db.getHistory();
+		assertEquals(c1, h.getParent(c2));
+		assertEquals(c1, h.getParent(c3));
+		assertEquals(root, h.getParent(c1));
+		assertEquals(0, h.getParent(root));
+		
+		assertArrayEquals(new long[] { root }, h.getChildren(0));
+		assertArrayEquals(new long[] { c1 }, h.getChildren(root));
+		long[] c1c = h.getChildren(c1);
+		assertEquals(2, c1c.length);
+		assertTrue((c1c[0] == c2 && c1c[1] == c3) || (c1c[0] == c3 && c1c[1] == c2));
+		assertArrayEquals(new long[0], h.getChildren(c2));
+		assertArrayEquals(new long[0], h.getChildren(c3));
+	}
+	
+	/**
+	 * Tests if the history throws an exception if we try to
+	 * resolve a non-existent commit
+	 */
+	@Test(expected = VException.class)
+	public void historyThrowNonExistentCommit1() {
+		_db.getHistory().getParent(0);
+	}
+	
+	/**
+	 * Tests if the history throws an exception if we try to
+	 * resolve a non-existent commit
+	 */
+	@Test(expected = VException.class)
+	public void historyThrowNonExistentCommit2() {
+		_db.getHistory().getChildren(1000L);
 	}
 }

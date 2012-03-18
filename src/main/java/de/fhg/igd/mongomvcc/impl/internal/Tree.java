@@ -27,20 +27,23 @@ import java.util.Set;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.WriteConcern;
 
 import de.fhg.igd.mongomvcc.VException;
+import de.fhg.igd.mongomvcc.VHistory;
 
 /**
  * <p>Represents the tree of commits.</p>
  * <p><strong>Thread-safety:</strong> This class is thread-safe.</p> 
  * @author Michel Kraemer
  */
-public class Tree {
+public class Tree implements VHistory {
 	/**
 	 * Attribute names
 	 */
+	private final static String ID = "_id";
 	private final static String CID = "cid";
 	private final static String PARENT_CID = "parent";
 	
@@ -82,7 +85,7 @@ public class Tree {
 	 */
 	public void addCommit(Commit commit) {
 		DBObject o = new BasicDBObject();
-		o.put("_id", commit.getCID());
+		o.put(ID, commit.getCID());
 		o.put(PARENT_CID, commit.getParentCID());
 		for (Map.Entry<String, TLongLongHashMap> e : commit.getObjects().entrySet()) {
 			DBObject co = new BasicDBObject();
@@ -116,7 +119,7 @@ public class Tree {
 			
 			//create branch
 			DBObject o = new BasicDBObject();
-			o.put("_id", name);
+			o.put(ID, name);
 			o.put(CID, headCID);
 			_branches.insert(o, WriteConcern.FSYNC_SAFE);
 		}
@@ -133,7 +136,7 @@ public class Tree {
 	 * @param headCID the CID of the new head
 	 */
 	public void updateBranchHead(String name, long headCID) {
-		_branches.update(new BasicDBObject("_id", name),
+		_branches.update(new BasicDBObject(ID, name),
 				new BasicDBObject("$set", new BasicDBObject(CID, headCID)),
 				false, false, WriteConcern.FSYNC_SAFE);
 	}
@@ -144,7 +147,7 @@ public class Tree {
 	 * @return true if the branch exists, false otherwise
 	 */
 	public boolean existsBranch(String name) {
-		return _branches.count(new BasicDBObject("_id", name)) > 0;
+		return _branches.count(new BasicDBObject(ID, name)) > 0;
 	}
 	
 	/**
@@ -167,7 +170,7 @@ public class Tree {
 	 * @return true if the commit exists, false otherwise
 	 */
 	public boolean existsCommit(long cid) {
-		return _commits.count(new BasicDBObject("_id", cid)) > 0;
+		return _commits.count(new BasicDBObject(ID, cid)) > 0;
 	}
 	
 	/**
@@ -198,6 +201,30 @@ public class Tree {
 		TLongLongHashMap r = new TLongLongHashMap(keys.size());
 		for (String k : keys) {
 			r.put(Long.parseLong(k), (Long)o.get(k));
+		}
+		return r;
+	}
+	
+	@Override
+	public long getParent(long cid) {
+		DBObject o = _commits.findOne(cid, new BasicDBObject(PARENT_CID, 1));
+		if (o == null) {
+			throw new VException("Unknown commit: " + cid);
+		}
+		return (Long)o.get(PARENT_CID);
+	}
+
+	@Override
+	public long[] getChildren(long cid) {
+		if (cid != 0 && !existsCommit(cid)) {
+			throw new VException("Unknown commit: " + cid);
+		}
+		DBCursor c = _commits.find(new BasicDBObject(PARENT_CID, cid),
+				new BasicDBObject(ID, 1));
+		long[] r = new long[c.count()];
+		int i = 0;
+		for (DBObject o : c) {
+			r[i++] = (Long)o.get(ID);
 		}
 		return r;
 	}

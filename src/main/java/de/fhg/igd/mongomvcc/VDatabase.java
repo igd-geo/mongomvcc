@@ -78,4 +78,9 @@ public interface VDatabase {
 	 * @return a counter which generates unique IDs for the database
 	 */
 	VCounter getCounter();
+	
+	/**
+	 * @return the database's history
+	 */
+	VHistory getHistory();
 }
