@@ -46,6 +46,7 @@ public class Tree implements VHistory {
 	private final static String ID = "_id";
 	private final static String CID = "cid";
 	private final static String PARENT_CID = "parent";
+	private final static String OBJECTS = "objects";
 	
 	/**
      * Collection names
@@ -87,6 +88,7 @@ public class Tree implements VHistory {
 		DBObject o = new BasicDBObject();
 		o.put(ID, commit.getCID());
 		o.put(PARENT_CID, commit.getParentCID());
+		DBObject objs = new BasicDBObject();
 		for (Map.Entry<String, TLongLongHashMap> e : commit.getObjects().entrySet()) {
 			DBObject co = new BasicDBObject();
 			TLongLongIterator it = e.getValue().iterator();
@@ -94,8 +96,9 @@ public class Tree implements VHistory {
 				it.advance();
 				co.put(String.valueOf(it.key()), it.value());
 			}
-			o.put(e.getKey(), co);
+			objs.put(e.getKey(), co);
 		}
+		o.put(OBJECTS, objs);
 		_commits.insert(o);
 	}
 	
@@ -184,13 +187,12 @@ public class Tree implements VHistory {
 		if (o == null) {
 			throw new VException("Unknown commit: " + cid);
 		}
-		long parentCID = 0;
+		long parentCID = (Long)o.get(PARENT_CID);
+		DBObject objs = (DBObject)o.get(OBJECTS);
 		Map<String, TLongLongHashMap> objects = new HashMap<String, TLongLongHashMap>();
-		for (String k : o.keySet()) {
-			if (k.equals(PARENT_CID)) {
-				parentCID = (Long)o.get(k);
-			} else if (!k.equals(MongoDBConstants.ID)) {
-				objects.put(k, resolveCollectionObjects((DBObject)o.get(k)));
+		for (String k : objs.keySet()) {
+			if (!k.equals(MongoDBConstants.ID)) {
+				objects.put(k, resolveCollectionObjects((DBObject)objs.get(k)));
 			}
 		}
 		return new Commit(cid, parentCID, objects);
