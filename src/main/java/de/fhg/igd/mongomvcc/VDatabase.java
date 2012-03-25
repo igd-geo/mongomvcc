@@ -62,7 +62,7 @@ public interface VDatabase {
 	/**
 	 * Creates a new named branch whose head is set to the given CID
 	 * @param name the branch's name
-	 * @param head the branch's head CID
+	 * @param headCID the branch's head CID
 	 * @return the branch
 	 * @throws VException if there already is a branch with the given name or
 	 * if the given head CID could not be resolved to an existing commit
