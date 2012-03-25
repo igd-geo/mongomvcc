@@ -68,7 +68,7 @@ public class MongoDBVDatabase implements VDatabase {
 		
 		//create root commit and master branch if needed
 		if (_tree.isEmpty()) {
-			Commit root = new Commit(_counter.getNextId(), 0,
+			Commit root = new Commit(_counter.getNextId(), 0, 0,
 					Collections.<String, TLongLongHashMap>emptyMap());
 			_tree.addCommit(root);
 			_tree.addBranch(VConstants.MASTER, root.getCID());
@@ -82,10 +82,8 @@ public class MongoDBVDatabase implements VDatabase {
 	
 	@Override
 	public VBranch checkout(String name) {
-		if (!_tree.existsBranch(name)) {
-			throw new VException("Unknown branch: " + name);
-		}
-		return new MongoDBVBranch(name, _tree, _db, _counter);
+		long rootCid = _tree.resolveBranchRootCid(name);
+		return new MongoDBVBranch(name, rootCid, _tree, _db, _counter);
 	}
 	
 	@Override
@@ -93,13 +91,14 @@ public class MongoDBVDatabase implements VDatabase {
 		if (!_tree.existsCommit(cid)) {
 			throw new VException("Unknown commit: " + cid);
 		}
-		return new MongoDBVBranch(cid, _tree, _db, _counter);
+		return new MongoDBVBranch(null, cid, _tree, _db, _counter);
 	}
 	
 	@Override
 	public VBranch createBranch(String name, long headCID) {
+		Commit head = _tree.resolveCommit(headCID);
 		_tree.addBranch(name, headCID);
-		return new MongoDBVBranch(name, _tree, _db, _counter);
+		return new MongoDBVBranch(name, head.getRootCID(), _tree, _db, _counter);
 	}
 	
 	@Override

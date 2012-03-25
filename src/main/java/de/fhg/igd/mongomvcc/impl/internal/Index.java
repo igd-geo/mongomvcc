@@ -74,18 +74,23 @@ public class Index {
 	/**
 	 * Maps collection names to maps of UIDs and OIDs
 	 */
-	private Map<String, TLongLongHashMap> _objects = new HashMap<String, TLongLongHashMap>();
+	private final Map<String, TLongLongHashMap> _objects = new HashMap<String, TLongLongHashMap>();
 	
 	/**
 	 * The UIDs of all dirty objects within a collection (a subset of {@link #_objects})
 	 */
-	private Map<String, TLongLongHashMap> _dirtyObjects = new HashMap<String, TLongLongHashMap>();
+	private final Map<String, TLongLongHashMap> _dirtyObjects = new HashMap<String, TLongLongHashMap>();
+	
+	/**
+	 * The OIDs of all deleted objects within a collection
+	 */
+	private final Map<String, TLongHashSet> _deletedOids = new HashMap<String, TLongHashSet>();
 	
 	/**
 	 * The OIDs of all objects within a collection (always equals the OIDs in
 	 * {@link #_objects} for the same collection)
 	 */
-	private Map<String, TLongHashSet> _oids = new HashMap<String, TLongHashSet>();
+	private final Map<String, TLongHashSet> _oids = new HashMap<String, TLongHashSet>();
 	
 	/**
 	 * Construct a new index. Reads the head commit and all its ancestors from
@@ -153,7 +158,7 @@ public class Index {
 
 	/**
 	 * For a given collection, this method lazily retrieves
-	 * the map that maps UIDs of dirty objects to OIDs.
+	 * the map that maps UIDs of deleted objects to OIDs.
 	 * @param collection the collection's name
 	 * @return the map
 	 */
@@ -164,6 +169,21 @@ public class Index {
 			_dirtyObjects.put(collection, objs);
 		}
 		return objs;
+	}
+	
+	/**
+	 * For a given collection, this method lazily retrieves
+	 * the OIDs of all deleted objects.
+	 * @param collection the collection's name
+	 * @return the OIDs
+	 */
+	private TLongHashSet getDeletedOids(String collection) {
+		TLongHashSet oids = _deletedOids.get(collection);
+		if (oids == null) {
+			oids = new TLongHashSet();
+			_deletedOids.put(collection, oids);
+		}
+		return oids;
 	}
 
 	/**
@@ -194,8 +214,14 @@ public class Index {
 			//an existing object is replaced by a new instance. Remove the
 			//old OID, since the old object is now invalid (within this index)
 			oids.remove(prev);
+			
+			if (oid == -1) {
+				getDeletedOids(collection).add(prev);
+			}
 		}
-		oids.add(oid);
+		if (oid != -1) {
+			oids.add(oid);
+		}
 		getDirtyObjects(collection).put(uid, oid);
 	}
 	
@@ -244,9 +270,18 @@ public class Index {
 	}
 	
 	/**
-	 * Clears the map of dirty objects
+	 * @return a map that maps collections to the OIDs of objects that
+	 * have been deleted in this collection
+	 */
+	public Map<String, TLongHashSet> getDeletedOids() {
+		return _deletedOids;
+	}
+	
+	/**
+	 * Clears the map of dirty objects and the map of deleted OIDs
 	 */
 	public void clearDirtyObjects() {
 		_dirtyObjects.clear();
+		_deletedOids.clear();
 	}
 }

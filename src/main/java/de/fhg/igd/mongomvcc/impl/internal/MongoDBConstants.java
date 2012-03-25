@@ -31,4 +31,9 @@ public abstract class MongoDBConstants {
 	 * The unique ID of each document
 	 */
 	public static final String ID = "_id";
+	
+	/**
+	 * Information about a document's lifetime
+	 */
+	public static final String LIFETIME = "_lifetime";
 }

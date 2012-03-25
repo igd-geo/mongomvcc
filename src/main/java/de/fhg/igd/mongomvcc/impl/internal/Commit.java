@@ -38,6 +38,11 @@ public class Commit {
 	private final long _parentCID;
 	
 	/**
+	 * The root CID of the branch this commit belongs to
+	 */
+	private final long _rootCID;
+	
+	/**
 	 * Objects added/changed in this commit. Maps collection names to maps of
 	 * UIDs and OIDs.
 	 */
@@ -48,12 +53,14 @@ public class Commit {
 	 * @param cid the commit's ID
 	 * @param parentCID the CID of this commit's parent. Can be 0 (zero) if
 	 * there is no parent (can only happen for the root commit)
+	 * @param rootCID the root CID of the branch this commit belongs to
 	 * @param objects objects added/changed in this commit. Maps collection
 	 * names to maps of UIDs and OIDs.
 	 */
-	public Commit(long cid, long parentCID, Map<String, TLongLongHashMap> objects) {
+	public Commit(long cid, long parentCID, long rootCID, Map<String, TLongLongHashMap> objects) {
 		_cid = cid;
 		_parentCID = parentCID;
+		_rootCID = rootCID;
 		_objects = objects;
 	}
 	
@@ -70,6 +77,13 @@ public class Commit {
 	 */
 	public long getParentCID() {
 		return _parentCID;
+	}
+	
+	/**
+	 * @return the root CID of the branch this commit belongs to
+	 */
+	public long getRootCID() {
+		return _rootCID;
 	}
 	
 	/**

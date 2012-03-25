@@ -44,6 +44,7 @@ public class Tree implements VHistory {
 	 * Attribute names
 	 */
 	private final static String CID = "cid";
+	private final static String ROOT_CID = "rootcid";
 	private final static String PARENT_CID = "parent";
 	private final static String OBJECTS = "objects";
 	
@@ -87,6 +88,7 @@ public class Tree implements VHistory {
 		DBObject o = new BasicDBObject();
 		o.put(MongoDBConstants.ID, commit.getCID());
 		o.put(PARENT_CID, commit.getParentCID());
+		o.put(ROOT_CID, commit.getRootCID());
 		DBObject objs = new BasicDBObject();
 		for (Map.Entry<String, TLongLongHashMap> e : commit.getObjects().entrySet()) {
 			DBObject co = new BasicDBObject();
@@ -123,6 +125,7 @@ public class Tree implements VHistory {
 			DBObject o = new BasicDBObject();
 			o.put(MongoDBConstants.ID, name);
 			o.put(CID, headCID);
+			o.put(ROOT_CID, headCID);
 			_branches.insert(o, WriteConcern.FSYNC_SAFE);
 		}
 	}
@@ -153,17 +156,39 @@ public class Tree implements VHistory {
 	}
 	
 	/**
+	 * Loads a branch from the database or fails if it does not exist
+	 * @param name the branch's name
+	 * @return the document representing the branch
+	 * @throws VException if the branch does not exist
+	 */
+	private DBObject findBranch(String name) {
+		DBObject branch = _branches.findOne(name);
+		if (branch == null) {
+			throw new VException("Unknown branch: " + name);
+		}
+		return branch;
+	}
+	
+	/**
 	 * Resolves the head commit of a named branch
 	 * @param name the name of the branch to resolve
 	 * @return the resolved commit
 	 * @throws VException if the commit could not be resolved
 	 */
 	public Commit resolveBranch(String name) {
-		DBObject branch = _branches.findOne(name);
-		if (branch == null) {
-			throw new VException("Unknown branch: " + name);
-		}
+		DBObject branch = findBranch(name);
 		return resolveCommit((Long)branch.get(CID));
+	}
+
+	/**
+	 * Resolves the CID of a named branch's root
+	 * @param name the branch's name
+	 * @return the resolved CID
+	 * @throws VException if the branch does not exist
+	 */
+	public long resolveBranchRootCid(String name) {
+		DBObject branch = findBranch(name);
+		return (Long)branch.get(ROOT_CID);
 	}
 	
 	/**
@@ -187,6 +212,7 @@ public class Tree implements VHistory {
 			throw new VException("Unknown commit: " + cid);
 		}
 		long parentCID = (Long)o.get(PARENT_CID);
+		long rootCID = (Long)o.get(ROOT_CID);
 		DBObject objs = (DBObject)o.get(OBJECTS);
 		Map<String, TLongLongHashMap> objects = new HashMap<String, TLongLongHashMap>();
 		for (String k : objs.keySet()) {
@@ -194,7 +220,7 @@ public class Tree implements VHistory {
 				objects.put(k, resolveCollectionObjects((DBObject)objs.get(k)));
 			}
 		}
-		return new Commit(cid, parentCID, objects);
+		return new Commit(cid, parentCID, rootCID, objects);
 	}
 	
 	private TLongLongHashMap resolveCollectionObjects(DBObject o) {

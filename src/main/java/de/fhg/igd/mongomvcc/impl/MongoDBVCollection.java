@@ -22,6 +22,7 @@ import gnu.trove.map.hash.TLongLongHashMap;
 import java.util.Map;
 
 import com.google.common.base.Predicate;
+import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -49,6 +50,12 @@ public class MongoDBVCollection implements VCollection {
 	 * or a new copy of an already existing object
 	 */
 	protected final static String OID = MongoDBConstants.ID;
+	
+	/**
+	 * A {@link DBObject} that can be passed to find methods in order
+	 * to exclude the {@link MongoDBConstants#LIFETIME} field from the result
+	 */
+	protected final static DBObject EXCLUDELIFETIME = new BasicDBObject(MongoDBConstants.LIFETIME, 0);
 	
 	/**
 	 * The actual MongoDB collection
@@ -112,19 +119,33 @@ public class MongoDBVCollection implements VCollection {
 		
 		//generate OID
 		long oid = _counter.getNextId();
-		obj.put("_id", oid);
-
-		//insert object into database
+		obj.put(OID, oid);
+		
 		DBObject dbo;
 		if (obj instanceof DBObject) {
 			dbo = (DBObject)obj;
 		} else {
 			dbo = new BasicDBObject(obj);
 		}
+		
+		//save lifetime
+		dbo.put(MongoDBConstants.LIFETIME, new BasicDBObject(
+				String.valueOf(_branch.getRootCid()), 0));
+
+		//insert object into database
 		_delegate.insert(dbo);
+		
+		//remove lifetime from the original object again
+		if (obj == dbo) {
+			obj.remove(MongoDBConstants.LIFETIME);
+		}
 		
 		//insert object into index
 		_branch.getIndex().insert(_name, uid, oid);
+	}
+	
+	private String getLifetimeBranchAttribute() {
+		return MongoDBConstants.LIFETIME + "." + _branch.getRootCid();
 	}
 	
 	@Override
@@ -152,6 +173,22 @@ public class MongoDBVCollection implements VCollection {
 		return new MongoDBVCursor(delegate, filter);
 	}
 	
+	/**
+	 * @return a query object which limits the number of objects returned
+	 * by accessing their lifetime information
+	 */
+	private DBObject makeQueryObject() {
+		BasicDBList l = new BasicDBList();
+		String lba = getLifetimeBranchAttribute();
+		
+		//TODO this condition must be removed once we know the whole branching history
+		l.add(new BasicDBObject(lba, new BasicDBObject("$exists", false)));
+		
+		l.add(new BasicDBObject(lba, 0));
+		l.add(new BasicDBObject(lba, new BasicDBObject("$gt", _branch.getHead())));
+		return new BasicDBObject("$or", l);
+	}
+	
 	@Override
 	public VCursor find() {
 		//ask index for OIDs
@@ -163,21 +200,17 @@ public class MongoDBVCollection implements VCollection {
 		//ask MongoDB for objects with the given OIDs
 		if (objs.size() == 1) {
 			//shortcut for one object
-			return createCursor(_delegate.find(new BasicDBObject(OID, objs.values()[0])), null);
+			return createCursor(_delegate.find(new BasicDBObject(OID, objs.values()[0]), EXCLUDELIFETIME), null);
 		} else {
-			return createCursor(_delegate.find(), new OIDInIndexFilter());
+			return createCursor(_delegate.find(makeQueryObject(), EXCLUDELIFETIME), new OIDInIndexFilter());
 		}
 	}
 	
 	@Override
 	public VCursor find(Map<String, Object> example) {
-		DBObject dbex;
-		if (example instanceof DBObject) {
-			dbex = (DBObject)example;
-		} else {
-			dbex = new BasicDBObject(example);
-		}
-		return createCursor(_delegate.find(dbex), new OIDInIndexFilter());
+		DBObject o = makeQueryObject();
+		o.putAll(example);
+		return createCursor(_delegate.find(o, EXCLUDELIFETIME), new OIDInIndexFilter());
 	}
 	
 	@Override
@@ -191,26 +224,23 @@ public class MongoDBVCollection implements VCollection {
 		fo.put(UID, 1);
 		fo.put(OID, 1);
 		
-		DBObject dbex;
-		if (example instanceof DBObject) {
-			dbex = (DBObject)example;
-		} else {
-			dbex = new BasicDBObject(example);
-		}
-		return createCursor(_delegate.find(dbex, fo), new OIDInIndexFilter());
+		//exclude lifetime
+		//FIXME MongoDB cannot currently mix including and excluding fields
+		//FIXME if this is an issue for you, vote for https://jira.mongodb.org/browse/SERVER-391
+		//fo.putAll(EXCLUDELIFETIME);
+		
+		DBObject o = makeQueryObject();
+		o.putAll(example);
+		return createCursor(_delegate.find(o, fo), new OIDInIndexFilter());
 	}
 	
 	@SuppressWarnings("unchecked")
 	@Override
 	public Map<String, Object> findOne(Map<String, Object> example) {
-		DBObject dbex;
-		if (example instanceof DBObject) {
-			dbex = (DBObject)example;
-		} else {
-			dbex = new BasicDBObject(example);
-		}
+		DBObject o = makeQueryObject();
+		o.putAll(example);
 		OIDInIndexFilter filter = new OIDInIndexFilter();
-		DBCursor c = _delegate.find(dbex);
+		DBCursor c = _delegate.find(o, EXCLUDELIFETIME);
 		for (DBObject obj : c) {
 			if (filter.apply(obj)) {
 				if (obj instanceof Map) {

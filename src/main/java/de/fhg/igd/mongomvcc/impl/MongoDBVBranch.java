@@ -17,12 +17,16 @@
 
 package de.fhg.igd.mongomvcc.impl;
 
+import gnu.trove.iterator.TLongIterator;
 import gnu.trove.map.hash.TLongLongHashMap;
+import gnu.trove.set.hash.TLongHashSet;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
+import com.mongodb.DBCollection;
 import com.mongodb.gridfs.GridFS;
 
 import de.fhg.igd.mongomvcc.VBranch;
@@ -32,8 +36,8 @@ import de.fhg.igd.mongomvcc.VException;
 import de.fhg.igd.mongomvcc.VLargeCollection;
 import de.fhg.igd.mongomvcc.impl.internal.Commit;
 import de.fhg.igd.mongomvcc.impl.internal.Index;
+import de.fhg.igd.mongomvcc.impl.internal.MongoDBConstants;
 import de.fhg.igd.mongomvcc.impl.internal.Tree;
-import de.fhg.igd.mongomvcc.util.Either;
 
 /**
  * <p>Implementation of {@link VBranch} for MongoDB. Each
@@ -59,9 +63,14 @@ public class MongoDBVBranch implements VBranch {
 	private final ThreadLocal<Index> _index = new ThreadLocal<Index>();
 	
 	/**
-	 * The branch's name or root CID
+	 * The branch's name (may be null)
 	 */
-	private final Either<String, Long> _nameOrCid;
+	private final String _name;
+	
+	/**
+	 * The CID of the branch's root
+	 */
+	private final long _rootCid;
 	
 	/**
 	 * The tree of commits
@@ -71,7 +80,7 @@ public class MongoDBVBranch implements VBranch {
 	/**
 	 * The MongoDB database object
 	 */
-	private DB _db;
+	private final DB _db;
 	
 	/**
 	 * A counter to generate unique IDs
@@ -80,27 +89,15 @@ public class MongoDBVBranch implements VBranch {
 	
 	/**
 	 * Constructs a new branch object (not the branch itself)
-	 * @param name the branch's name
+	 * @param name the branch's name (may be null for unnamed branches)
+	 * @param rootCid the CID of the branch's root
 	 * @param tree the tree of commits
 	 * @param db the MongoDB database object
 	 * @param counter a counter to generate unique IDs
 	 */
-	public MongoDBVBranch(String name, Tree tree, DB db, VCounter counter) {
-		_nameOrCid = new Either<String, Long>(name);
-		_tree = tree;
-		_db = db;
-		_counter = counter;
-	}
-	
-	/**
-	 * Constructs a new unnamed branch object (not the branch itself)
-	 * @param cid the branch's root CID
-	 * @param tree the tree of commits
-	 * @param db the MongoDB database object
-	 * @param counter a counter to generate unique IDs
-	 */
-	public MongoDBVBranch(long cid, Tree tree, DB db, VCounter counter) {
-		_nameOrCid = new Either<String, Long>(cid);
+	public MongoDBVBranch(String name, long rootCid, Tree tree, DB db, VCounter counter) {
+		_name = name;
+		_rootCid = rootCid;
 		_tree = tree;
 		_db = db;
 		_counter = counter;
@@ -112,10 +109,10 @@ public class MongoDBVBranch implements VBranch {
 	private Commit getHeadCommit() {
 		Commit r = _head.get();
 		if (r == null) {
-			if (_nameOrCid.isLeft()) {
-				r = _tree.resolveBranch(_nameOrCid.getLeft());
+			if (_name != null) {
+				r = _tree.resolveBranch(_name);
 			} else {
-				r = _tree.resolveCommit(_nameOrCid.getRight());
+				r = _tree.resolveCommit(_rootCid);
 			}
 			_head.set(r);
 		}
@@ -171,15 +168,34 @@ public class MongoDBVBranch implements VBranch {
 		return r;
 	}
 	
+	/**
+	 * @return the CID of this branch's root
+	 */
+	public long getRootCid() {
+		return _rootCid;
+	}
+	
 	@Override
 	public long commit() {
 		Index idx = getIndex();
 		//clone dirty objects because we clear them below
 		Map<String, TLongLongHashMap> dos = new HashMap<String, TLongLongHashMap>(idx.getDirtyObjects());
 		Commit head = getHeadCommit();
-		Commit c = new Commit(_counter.getNextId(), head.getCID(), dos);
+		Commit c = new Commit(_counter.getNextId(), head.getCID(), _rootCid, dos);
 		_tree.addCommit(c);
 		updateHead(c);
+		
+		//mark deleted objects as deleted in the database
+		String lifetimeAttr = "_lifetime." + getRootCid();
+		for (Map.Entry<String, TLongHashSet> e : idx.getDeletedOids().entrySet()) {
+			DBCollection dbc = _db.getCollection(e.getKey());
+			TLongIterator li = e.getValue().iterator();
+			while (li.hasNext()) {
+				long oid = li.next();
+				dbc.update(new BasicDBObject(MongoDBConstants.ID, oid), new BasicDBObject("$set",
+						new BasicDBObject(lifetimeAttr, head.getCID())));
+			}
+		}
 		
 		//reset index
 		idx.clearDirtyObjects();
@@ -191,17 +207,16 @@ public class MongoDBVBranch implements VBranch {
 		//branch's head.
 		
 		//update named branch's head
-		if (_nameOrCid.isLeft()) {
+		if (_name != null) {
 			//synchronize the following part, because we first resolve the branch
 			//and then update it
 			synchronized (this) {
 				//check for conflicts (i.e. if another thread has already updated the branch's head)
-				String name = _nameOrCid.getLeft();
-				if (_tree.resolveBranch(name).getCID() != c.getParentCID()) {
-					throw new VException("Branch " + name + " has already been " +
+				if (_tree.resolveBranch(_name).getCID() != c.getParentCID()) {
+					throw new VException("Branch " + _name + " has already been " +
 							"updated by another commit");
 				}
-				_tree.updateBranchHead(name, c.getCID());
+				_tree.updateBranchHead(_name, c.getCID());
 			}
 		}
 
