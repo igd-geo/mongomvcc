@@ -91,7 +91,7 @@ artifacts {
 
 // sign all artifacts
 signing {
-    required { gradle.taskGraph.hasTask("uploadArchives") }
+    required { gradle.taskGraph.hasTask(uploadArchives) }
     sign configurations.archives
 }
 
