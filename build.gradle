@@ -1,0 +1,143 @@
+// This file is part of MongoMVCC.
+//
+// Copyright (c) 2012 Fraunhofer IGD
+//
+// MongoMVCC is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// MongoMVCC is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public
+// License along with MongoMVCC. If not, see <http://www.gnu.org/licenses/>.
+
+apply plugin: 'eclipse'
+apply plugin: 'maven'
+apply plugin: 'osgi'
+apply plugin: 'signing'
+
+version = '0.3.0'
+
+allprojects {
+    apply plugin: 'java'
+    
+    group = 'de.fhg.igd'
+    
+    repositories {
+        mavenCentral()
+    }
+    
+    dependencies {
+        compile 'org.mongodb:mongo-java-driver:2.7.3'
+        compile 'net.sf.trove4j:trove4j:3.0.2'
+        compile 'com.google.guava:guava:11.0.2'
+        
+        testCompile 'junit:junit:4.10'
+        testCompile 'com.carrotsearch:junit-benchmarks:0.3.0'
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    
+    version = '1.0.0'
+    
+    dependencies {
+        // subprojects depend on the root project
+        compile project(':')
+    }
+}
+
+jar {
+    // define OSGi bundle manifest
+    manifest {
+        name = 'MongoMVCC'
+        symbolicName = 'de.fhg.igd.mongomvcc'
+        vendor = 'Fraunhofer IGD'
+        instruction 'Import-Package', '*'
+        instruction 'Export-Package', "de.fhg.igd.*;version=${version}"
+    }
+    
+    // include license into jar
+    from 'LICENSE.txt'
+}
+
+// package javadoc into a jar file
+task packageJavadoc(type: Jar, dependsOn: 'javadoc') {
+    from javadoc.destinationDir
+    classifier = 'javadoc'
+}
+
+// package source into a jar file
+task packageSources(type: Jar) {
+    from sourceSets.main.allSource
+    classifier = 'sources'
+}
+
+// define artifacts for upload
+artifacts {
+    archives jar
+    archives(packageJavadoc) {
+        type = 'javadoc'
+    }
+    archives(packageSources) {
+        type = 'sources'
+    }
+}
+
+// sign all artifacts
+signing {
+    sign configurations.archives
+}
+
+// remove test dependencies from configuration-to-scope mapping
+// this also removes them from the maven pom file
+conf2ScopeMappings.mappings.remove(configurations.testCompile)
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            // sign artifacts before upload
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+            
+            // upload to sonatype OSS
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2") {
+                authentication(userName: sonatypeUsername, password: sonatypePassword)
+            }
+            
+            // pom file details
+            pom.project {
+               name 'MongoMVCC'
+               packaging 'jar'
+               description 'Implements the MVCC model on top of MongoDB'
+               url 'http://www.igd.fraunhofer.de/geo'
+ 
+               scm {
+                   url 'scm:git:git://github.com/igd-geo/mongomvcc.git'
+                   connection 'scm:git:git://github.com/igd-geo/mongomvcc.git'
+                   developerConnection 'scm:git:git://github.com/igd-geo/mongomvcc.git'
+               }
+ 
+               licenses {
+                   license {
+                       name 'GNU Lesser General Public License (LGPL) v3.0'
+                       url 'http://www.gnu.org/licenses/lgpl-3.0.txt'
+                       distribution 'repo'
+                   }
+               }
+ 
+               developers {
+                   developer {
+                       id 'michel-kraemer'
+                       name 'Michel Kraemer'
+                       email 'michel.kraemer@igd.fraunhofer.de'
+                   }
+               }
+           }
+        }
+    }
+}
