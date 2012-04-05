@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with MongoMVCC. If not, see <http://www.gnu.org/licenses/>.
 
-apply plugin: 'eclipse'
 apply plugin: 'maven'
 apply plugin: 'osgi'
 apply plugin: 'signing'
@@ -24,6 +23,7 @@ version = '0.4.0'
 
 allprojects {
     apply plugin: 'java'
+    apply plugin: 'eclipse'
     
     group = 'de.fhg.igd'
     
