@@ -17,9 +17,7 @@
 
 package de.fhg.igd.mongomvcc.impl;
 
-import gnu.trove.iterator.TLongIterator;
 import gnu.trove.map.hash.TLongLongHashMap;
-import gnu.trove.set.hash.TLongHashSet;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,6 +32,8 @@ import de.fhg.igd.mongomvcc.VCollection;
 import de.fhg.igd.mongomvcc.VCounter;
 import de.fhg.igd.mongomvcc.VException;
 import de.fhg.igd.mongomvcc.VLargeCollection;
+import de.fhg.igd.mongomvcc.helper.IdIterator;
+import de.fhg.igd.mongomvcc.helper.IdSet;
 import de.fhg.igd.mongomvcc.impl.internal.Commit;
 import de.fhg.igd.mongomvcc.impl.internal.Index;
 import de.fhg.igd.mongomvcc.impl.internal.MongoDBConstants;
@@ -187,9 +187,9 @@ public class MongoDBVBranch implements VBranch {
 		
 		//mark deleted objects as deleted in the database
 		String lifetimeAttr = "_lifetime." + getRootCid();
-		for (Map.Entry<String, TLongHashSet> e : idx.getDeletedOids().entrySet()) {
+		for (Map.Entry<String, IdSet> e : idx.getDeletedOids().entrySet()) {
 			DBCollection dbc = _db.getCollection(e.getKey());
-			TLongIterator li = e.getValue().iterator();
+			IdIterator li = e.getValue().iterator();
 			while (li.hasNext()) {
 				long oid = li.next();
 				dbc.update(new BasicDBObject(MongoDBConstants.ID, oid), new BasicDBObject("$set",

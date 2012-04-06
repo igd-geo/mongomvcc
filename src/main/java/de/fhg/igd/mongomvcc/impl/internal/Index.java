@@ -19,11 +19,12 @@ package de.fhg.igd.mongomvcc.impl.internal;
 
 import gnu.trove.iterator.TLongLongIterator;
 import gnu.trove.map.hash.TLongLongHashMap;
-import gnu.trove.set.hash.TLongHashSet;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import de.fhg.igd.mongomvcc.helper.IdHashSet;
+import de.fhg.igd.mongomvcc.helper.IdSet;
 import de.fhg.igd.mongomvcc.impl.MongoDBVCollection;
 import de.fhg.igd.mongomvcc.impl.MongoDBVDatabase;
 
@@ -84,13 +85,13 @@ public class Index {
 	/**
 	 * The OIDs of all deleted objects within a collection
 	 */
-	private final Map<String, TLongHashSet> _deletedOids = new HashMap<String, TLongHashSet>();
+	private final Map<String, IdSet> _deletedOids = new HashMap<String, IdSet>();
 	
 	/**
 	 * The OIDs of all objects within a collection (always equals the OIDs in
 	 * {@link #_objects} for the same collection)
 	 */
-	private final Map<String, TLongHashSet> _oids = new HashMap<String, TLongHashSet>();
+	private final Map<String, IdSet> _oids = new HashMap<String, IdSet>();
 	
 	/**
 	 * Construct a new index. Reads the head commit and all its ancestors from
@@ -118,7 +119,7 @@ public class Index {
 		//read objects from the given commit and put them into the index
 		for (Map.Entry<String, TLongLongHashMap> e : c.getObjects().entrySet()) {
 			TLongLongHashMap m = getObjects(e.getKey());
-			TLongHashSet o = getOIDs(e.getKey());
+			IdSet o = getOIDs(e.getKey());
 			TLongLongIterator it = e.getValue().iterator();
 			while (it.hasNext()) {
 				it.advance();
@@ -177,10 +178,10 @@ public class Index {
 	 * @param collection the collection's name
 	 * @return the OIDs
 	 */
-	private TLongHashSet getDeletedOids(String collection) {
-		TLongHashSet oids = _deletedOids.get(collection);
+	private IdSet getDeletedOids(String collection) {
+		IdSet oids = _deletedOids.get(collection);
 		if (oids == null) {
-			oids = new TLongHashSet();
+			oids = new IdHashSet();
 			_deletedOids.put(collection, oids);
 		}
 		return oids;
@@ -191,10 +192,10 @@ public class Index {
 	 * @param collection the collection's name
 	 * @return the OIDs
 	 */
-	private TLongHashSet getOIDs(String collection) {
-		TLongHashSet oids = _oids.get(collection);
+	private IdSet getOIDs(String collection) {
+		IdSet oids = _oids.get(collection);
 		if (oids == null) {
-			oids = new TLongHashSet();
+			oids = new IdHashSet();
 			_oids.put(collection, oids);
 		}
 		return oids;
@@ -208,7 +209,7 @@ public class Index {
 	 */
 	public void insert(String collection, long uid, long oid) {
 		TLongLongHashMap objs = getObjects(collection);
-		TLongHashSet oids = getOIDs(collection);
+		IdSet oids = getOIDs(collection);
 		long prev = objs.put(uid, oid);
 		if (prev != 0) {
 			//an existing object is replaced by a new instance. Remove the
@@ -273,7 +274,7 @@ public class Index {
 	 * @return a map that maps collections to the OIDs of objects that
 	 * have been deleted in this collection
 	 */
-	public Map<String, TLongHashSet> getDeletedOids() {
+	public Map<String, IdSet> getDeletedOids() {
 		return _deletedOids;
 	}
 	
