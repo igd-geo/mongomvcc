@@ -17,9 +17,6 @@
 
 package de.fhg.igd.mongomvcc.impl.internal;
 
-import gnu.trove.iterator.TLongLongIterator;
-import gnu.trove.map.hash.TLongLongHashMap;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +30,9 @@ import com.mongodb.WriteConcern;
 
 import de.fhg.igd.mongomvcc.VException;
 import de.fhg.igd.mongomvcc.VHistory;
+import de.fhg.igd.mongomvcc.helper.IdHashMap;
+import de.fhg.igd.mongomvcc.helper.IdMap;
+import de.fhg.igd.mongomvcc.helper.IdMapIterator;
 
 /**
  * <p>Represents the tree of commits.</p>
@@ -90,9 +90,9 @@ public class Tree implements VHistory {
 		o.put(PARENT_CID, commit.getParentCID());
 		o.put(ROOT_CID, commit.getRootCID());
 		DBObject objs = new BasicDBObject();
-		for (Map.Entry<String, TLongLongHashMap> e : commit.getObjects().entrySet()) {
+		for (Map.Entry<String, IdMap> e : commit.getObjects().entrySet()) {
 			DBObject co = new BasicDBObject();
-			TLongLongIterator it = e.getValue().iterator();
+			IdMapIterator it = e.getValue().iterator();
 			while (it.hasNext()) {
 				it.advance();
 				co.put(String.valueOf(it.key()), it.value());
@@ -214,7 +214,7 @@ public class Tree implements VHistory {
 		long parentCID = (Long)o.get(PARENT_CID);
 		long rootCID = (Long)o.get(ROOT_CID);
 		DBObject objs = (DBObject)o.get(OBJECTS);
-		Map<String, TLongLongHashMap> objects = new HashMap<String, TLongLongHashMap>();
+		Map<String, IdMap> objects = new HashMap<String, IdMap>();
 		for (String k : objs.keySet()) {
 			if (!k.equals(MongoDBConstants.ID)) {
 				objects.put(k, resolveCollectionObjects((DBObject)objs.get(k)));
@@ -223,9 +223,9 @@ public class Tree implements VHistory {
 		return new Commit(cid, parentCID, rootCID, objects);
 	}
 	
-	private TLongLongHashMap resolveCollectionObjects(DBObject o) {
+	private IdMap resolveCollectionObjects(DBObject o) {
 		Set<String> keys = o.keySet();
-		TLongLongHashMap r = new TLongLongHashMap(keys.size());
+		IdMap r = new IdHashMap(keys.size());
 		for (String k : keys) {
 			r.put(Long.parseLong(k), (Long)o.get(k));
 		}

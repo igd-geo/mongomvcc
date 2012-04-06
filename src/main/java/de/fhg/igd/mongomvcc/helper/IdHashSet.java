@@ -28,48 +28,7 @@ import java.util.NoSuchElementException;
  * a little bit faster than trove4j's implementation.</p>
  * @author Michel Kraemer
  */
-public class IdHashSet implements IdSet {
-	/**
-	 * The default number of expected elements in this set
-	 */
-	private static final int DEFAULT_EXPECTED_SIZE = 20;
-	
-	/**
-	 * The default load factor
-	 */
-	private static final float DEFAULT_LOAD_FACTOR = 0.5f;
-	
-	/**
-	 * The hash table's minimum capacity
-	 */
-	private static final int MINIMUM_CAPACITY = 5;
-	
-	/**
-	 * A free table cell
-	 */
-	private static final long FREE = Long.MAX_VALUE;
-	
-	/**
-	 * A deleted table cell
-	 */
-	private static final long DELETED = Long.MIN_VALUE;
-	
-	/**
-	 * The number of elements in this set
-	 */
-	private int _size = 0;
-	
-	/**
-	 * A factor that will be multiplied with the expected number of
-	 * elements in order to calculate the capacity
-	 */
-	private final float _overloadFactor;
-	
-	/**
-	 * The actual table
-	 */
-	private long[] _table;
-	
+public class IdHashSet extends AbstractIdHashCollection implements IdSet {
 	/**
 	 * Constructs a new set with the default number of
 	 * expected elements ({@value #DEFAULT_EXPECTED_SIZE}) and
@@ -100,47 +59,9 @@ public class IdHashSet implements IdSet {
 		ensureCapacity(expectedSize);
 	}
 	
-	/**
-	 * Clears the given array--i.e. fills it with {@link #FREE} values
-	 * @param arr the array to clear
-	 */
-	private static void clearArray(long[] arr) {
-		//even faster than Arrays.fill()
-		for (int i = 0; i < arr.length; ++i) {
-			arr[i] = FREE;
-		}
-	}
-	
-	/**
-	 * Ensures that the table can hold a given number of elements.
-	 * Resizes the table if needed.
-	 * @param elements the number of expected elements
-	 */
-	private void ensureCapacity(int elements) {
-		int capacity = (int)(elements * _overloadFactor);
-		
-		if (_table != null && capacity < _table.length) {
-			//already OK
-			return;
-		}
-		
-		if (capacity < MINIMUM_CAPACITY) {
-			capacity = MINIMUM_CAPACITY;
-		}
-		if (_table != null) {
-			int tld = _table.length << 1;
-			if (capacity < tld) {
-				capacity = tld;
-			}
-		}
-		
-		//capacity should ideally be a prime number
-		capacity = Primes.next(capacity);
-		
-		long[] oldTable = _table;
-		_table = new long[capacity];
-		clearArray(_table);
-		
+	@Override
+	protected long[] ensureCapacity(int elements) {
+		long[] oldTable = super.ensureCapacity(elements);
 		if (oldTable != null) {
 			//copy old values
 			for (long l : oldTable) {
@@ -149,15 +70,7 @@ public class IdHashSet implements IdSet {
 				}
 			}
 		}
-	}
-	
-	/**
-	 * Calculates the hash for a given value
-	 * @param value the value
-	 * @return the hash
-	 */
-	private int hash(long value) {
-		return (int)(value ^ (value >>> 32));
+		return oldTable;
 	}
 	
 	/**
@@ -168,16 +81,16 @@ public class IdHashSet implements IdSet {
 	 */
 	private boolean addInternal(long value) {
 		int h0 = hash(value);
-		int h = h0 % _table.length;
+		int h = h0 % _capacity;
 		if (_table[h] == value) {
 			return false;
 		}
 		if (_table[h] != FREE && _table[h] != DELETED) {
-			int h1 = 1 + (h0 % (_table.length - 2));
+			int h1 = 1 + (h0 % (_capacity - 2));
 			do {
 				h -= h1;
 				if (h < 0) {
-					h += _table.length;
+					h += _capacity;
 				}
 				if (_table[h] == value) {
 					return false;
@@ -207,18 +120,18 @@ public class IdHashSet implements IdSet {
 	@Override
 	public boolean contains(long value) {
 		int h0 = hash(value);
-		int h = h0 % _table.length;
+		int h = h0 % _capacity;
 		if (_table[h] == value) {
 			return true;
 		} else if (_table[h] == FREE) {
 			return false;
 		}
 		
-		int h1 = 1 + (h0 % (_table.length - 2));
+		int h1 = 1 + (h0 % (_capacity - 2));
 		while (true) {
 			h -= h1;
 			if (h < 0) {
-				h += _table.length;
+				h += _capacity;
 			}
 			if (_table[h] == value) {
 				return true;
@@ -231,7 +144,7 @@ public class IdHashSet implements IdSet {
 	@Override
 	public boolean remove(long value) {
 		int h0 = hash(value);
-		int h = h0 % _table.length;
+		int h = h0 % _capacity;
 		if (_table[h] == value) {
 			_table[h] = DELETED;
 			--_size;
@@ -240,11 +153,11 @@ public class IdHashSet implements IdSet {
 			return false;
 		}
 		
-		int h1 = 1 + (h0 % (_table.length - 2));
+		int h1 = 1 + (h0 % (_capacity - 2));
 		while (true) {
 			h -= h1;
 			if (h < 0) {
-				h += _table.length;
+				h += _capacity;
 			}
 			if (_table[h] == value) {
 				_table[h] = DELETED;
@@ -269,8 +182,8 @@ public class IdHashSet implements IdSet {
 	}
 	
 	@Override
-	public IdIterator iterator() {
-		return new IdIterator() {
+	public IdSetIterator iterator() {
+		return new IdSetIterator() {
 			private int _n = 0;
 			private int _i = 0;
 			
@@ -289,16 +202,5 @@ public class IdHashSet implements IdSet {
 				return _table[_i++];
 			}
 		};
-	}
-
-	@Override
-	public int size() {
-		return _size;
-	}
-
-	@Override
-	public void clear() {
-		_size = 0;
-		clearArray(_table);
 	}
 }

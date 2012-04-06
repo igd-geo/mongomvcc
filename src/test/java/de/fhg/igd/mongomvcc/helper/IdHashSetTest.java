@@ -150,6 +150,9 @@ public class IdHashSetTest {
 		assertEquals(0, s.size());
 		long[] a = s.toArray();
 		assertEquals(0, a.length);
+		for (int i = 0; i < 20; ++i) {
+			assertFalse(s.contains(i * i));
+		}
 	}
 	
 	/**
@@ -158,7 +161,7 @@ public class IdHashSetTest {
 	@Test(expected = NoSuchElementException.class)
 	public void iteratorEmpty() {
 		IdSet s = new IdHashSet();
-		IdIterator i = s.iterator();
+		IdSetIterator i = s.iterator();
 		assertFalse(i.hasNext());
 		i.next();
 	}
@@ -172,7 +175,7 @@ public class IdHashSetTest {
 		for (int j = 0; j < 20; ++j) {
 			s.add(j * j);
 		}
-		IdIterator i = s.iterator();
+		IdSetIterator i = s.iterator();
 		int n = 0;
 		long[] a = new long[20];
 		while (i.hasNext()) {

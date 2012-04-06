@@ -17,8 +17,6 @@
 
 package de.fhg.igd.mongomvcc.impl;
 
-import gnu.trove.map.hash.TLongLongHashMap;
-
 import java.net.UnknownHostException;
 import java.util.Collections;
 
@@ -31,6 +29,7 @@ import de.fhg.igd.mongomvcc.VCounter;
 import de.fhg.igd.mongomvcc.VDatabase;
 import de.fhg.igd.mongomvcc.VException;
 import de.fhg.igd.mongomvcc.VHistory;
+import de.fhg.igd.mongomvcc.helper.IdMap;
 import de.fhg.igd.mongomvcc.impl.internal.Commit;
 import de.fhg.igd.mongomvcc.impl.internal.Tree;
 
@@ -69,7 +68,7 @@ public class MongoDBVDatabase implements VDatabase {
 		//create root commit and master branch if needed
 		if (_tree.isEmpty()) {
 			Commit root = new Commit(_counter.getNextId(), 0, 0,
-					Collections.<String, TLongLongHashMap>emptyMap());
+					Collections.<String, IdMap>emptyMap());
 			_tree.addCommit(root);
 			_tree.addBranch(VConstants.MASTER, root.getCID());
 		}

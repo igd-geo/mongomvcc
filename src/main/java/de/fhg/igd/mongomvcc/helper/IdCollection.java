@@ -17,21 +17,18 @@
 
 package de.fhg.igd.mongomvcc.helper;
 
-import java.util.NoSuchElementException;
-
 /**
- * Can be used to iterate through {@link IdSet}s
+ * A collection containing IDs
  * @author Michel Kraemer
  */
-public interface IdIterator {
+public interface IdCollection {
 	/**
-	 * @return true if there is a next item in the set
+	 * @return the number of elements in this set
 	 */
-	boolean hasNext();
+	int size();
 	
 	/**
-	 * @return the next item
-	 * @throws NoSuchElementException if there is no more item
+	 * Removes all elements from this set
 	 */
-	long next() throws NoSuchElementException;
+	void clear();
 }

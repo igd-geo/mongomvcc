@@ -17,8 +17,6 @@
 
 package de.fhg.igd.mongomvcc.impl;
 
-import gnu.trove.map.hash.TLongLongHashMap;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,7 +30,8 @@ import de.fhg.igd.mongomvcc.VCollection;
 import de.fhg.igd.mongomvcc.VCounter;
 import de.fhg.igd.mongomvcc.VException;
 import de.fhg.igd.mongomvcc.VLargeCollection;
-import de.fhg.igd.mongomvcc.helper.IdIterator;
+import de.fhg.igd.mongomvcc.helper.IdMap;
+import de.fhg.igd.mongomvcc.helper.IdSetIterator;
 import de.fhg.igd.mongomvcc.helper.IdSet;
 import de.fhg.igd.mongomvcc.impl.internal.Commit;
 import de.fhg.igd.mongomvcc.impl.internal.Index;
@@ -179,7 +178,7 @@ public class MongoDBVBranch implements VBranch {
 	public long commit() {
 		Index idx = getIndex();
 		//clone dirty objects because we clear them below
-		Map<String, TLongLongHashMap> dos = new HashMap<String, TLongLongHashMap>(idx.getDirtyObjects());
+		Map<String, IdMap> dos = new HashMap<String, IdMap>(idx.getDirtyObjects());
 		Commit head = getHeadCommit();
 		Commit c = new Commit(_counter.getNextId(), head.getCID(), _rootCid, dos);
 		_tree.addCommit(c);
@@ -189,7 +188,7 @@ public class MongoDBVBranch implements VBranch {
 		String lifetimeAttr = "_lifetime." + getRootCid();
 		for (Map.Entry<String, IdSet> e : idx.getDeletedOids().entrySet()) {
 			DBCollection dbc = _db.getCollection(e.getKey());
-			IdIterator li = e.getValue().iterator();
+			IdSetIterator li = e.getValue().iterator();
 			while (li.hasNext()) {
 				long oid = li.next();
 				dbc.update(new BasicDBObject(MongoDBConstants.ID, oid), new BasicDBObject("$set",

@@ -17,13 +17,13 @@
 
 package de.fhg.igd.mongomvcc.impl.internal;
 
-import gnu.trove.iterator.TLongLongIterator;
-import gnu.trove.map.hash.TLongLongHashMap;
-
 import java.util.HashMap;
 import java.util.Map;
 
+import de.fhg.igd.mongomvcc.helper.IdHashMap;
 import de.fhg.igd.mongomvcc.helper.IdHashSet;
+import de.fhg.igd.mongomvcc.helper.IdMap;
+import de.fhg.igd.mongomvcc.helper.IdMapIterator;
 import de.fhg.igd.mongomvcc.helper.IdSet;
 import de.fhg.igd.mongomvcc.impl.MongoDBVCollection;
 import de.fhg.igd.mongomvcc.impl.MongoDBVDatabase;
@@ -75,12 +75,12 @@ public class Index {
 	/**
 	 * Maps collection names to maps of UIDs and OIDs
 	 */
-	private final Map<String, TLongLongHashMap> _objects = new HashMap<String, TLongLongHashMap>();
+	private final Map<String, IdMap> _objects = new HashMap<String, IdMap>();
 	
 	/**
 	 * The UIDs of all dirty objects within a collection (a subset of {@link #_objects})
 	 */
-	private final Map<String, TLongLongHashMap> _dirtyObjects = new HashMap<String, TLongLongHashMap>();
+	private final Map<String, IdMap> _dirtyObjects = new HashMap<String, IdMap>();
 	
 	/**
 	 * The OIDs of all deleted objects within a collection
@@ -117,10 +117,10 @@ public class Index {
 		}
 
 		//read objects from the given commit and put them into the index
-		for (Map.Entry<String, TLongLongHashMap> e : c.getObjects().entrySet()) {
-			TLongLongHashMap m = getObjects(e.getKey());
+		for (Map.Entry<String, IdMap> e : c.getObjects().entrySet()) {
+			IdMap m = getObjects(e.getKey());
 			IdSet o = getOIDs(e.getKey());
-			TLongLongIterator it = e.getValue().iterator();
+			IdMapIterator it = e.getValue().iterator();
 			while (it.hasNext()) {
 				it.advance();
 				if (it.value() < 0) {
@@ -148,10 +148,10 @@ public class Index {
 	 * @param collection the collection's name
 	 * @return the map
 	 */
-	private TLongLongHashMap getObjects(String collection) {
-		TLongLongHashMap objs = _objects.get(collection);
+	private IdMap getObjects(String collection) {
+		IdMap objs = _objects.get(collection);
 		if (objs == null) {
-			objs = new TLongLongHashMap();
+			objs = new IdHashMap();
 			_objects.put(collection, objs);
 		}
 		return objs;
@@ -163,10 +163,10 @@ public class Index {
 	 * @param collection the collection's name
 	 * @return the map
 	 */
-	private TLongLongHashMap getDirtyObjects(String collection) {
-		TLongLongHashMap objs = _dirtyObjects.get(collection);
+	private IdMap getDirtyObjects(String collection) {
+		IdMap objs = _dirtyObjects.get(collection);
 		if (objs == null) {
-			objs = new TLongLongHashMap();
+			objs = new IdHashMap();
 			_dirtyObjects.put(collection, objs);
 		}
 		return objs;
@@ -208,7 +208,7 @@ public class Index {
 	 * @param oid the OID
 	 */
 	public void insert(String collection, long uid, long oid) {
-		TLongLongHashMap objs = getObjects(collection);
+		IdMap objs = getObjects(collection);
 		IdSet oids = getOIDs(collection);
 		long prev = objs.put(uid, oid);
 		if (prev != 0) {
@@ -248,7 +248,7 @@ public class Index {
 	 * @param collection the collection's name
 	 * @return the objects
 	 */
-	public TLongLongHashMap find(String collection) {
+	public IdMap find(String collection) {
 		return getObjects(collection);
 	}
 	
@@ -266,7 +266,7 @@ public class Index {
 	 * @return all dirty objects for all collections. For performance reasons
 	 * the internal map is returned. Callers MUST NOT change this map.
 	 */
-	public Map<String, TLongLongHashMap> getDirtyObjects() {
+	public Map<String, IdMap> getDirtyObjects() {
 		return _dirtyObjects;
 	}
 	

@@ -18,10 +18,10 @@
 package de.fhg.igd.mongomvcc.helper;
 
 import static org.junit.Assert.assertTrue;
-import gnu.trove.set.hash.TLongHashSet;
+import gnu.trove.map.hash.TLongLongHashMap;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -30,12 +30,12 @@ import org.junit.Test;
 import com.carrotsearch.junitbenchmarks.AbstractBenchmark;
 
 /**
- * Benchmarks {@link IdHashSet} compared to the implementations of
+ * Benchmarks {@link IdHashMap} compared to the implementations of
  * Java and trove4j
  * @author Michel Kraemer
  */
 @Ignore
-public class IdHashSetPerformanceTest extends AbstractBenchmark {
+public class IdHashMapBenchmark extends AbstractBenchmark {
 	private static final long[] values = new long[500000];
 	
 	/**
@@ -52,18 +52,18 @@ public class IdHashSetPerformanceTest extends AbstractBenchmark {
 	 * Test the java implementation
 	 */
 	@Test
-	public void javaLongSet() {
-		Set<Long> set = new HashSet<Long>(values.length * 3 / 2);
+	public void javaLongMap() {
+		Map<Long, Long> map = new HashMap<Long, Long>(values.length * 3 / 2);
 		for (int i = 0; i < values.length; ++i) {
-			set.add(values[i]);
+			map.put(values[i], values[values.length - i - 1]);
 		}
 		
 		for (int i = 0; i < values.length; ++i) {
-			assertTrue(set.contains(values[i]));
+			assertTrue(map.containsKey(values[i]));
 		}
 		
 		for (int i = 0; i < values.length; ++i) {
-			set.remove(values[i]);
+			map.remove(values[i]);
 		}
 	}
 	
@@ -71,18 +71,18 @@ public class IdHashSetPerformanceTest extends AbstractBenchmark {
 	 * Test trove4j's implementation
 	 */
 	@Test
-	public void troveLongSet() {
-		TLongHashSet set = new TLongHashSet(values.length * 3 / 2);
+	public void troveLongMap() {
+		TLongLongHashMap map = new TLongLongHashMap(values.length * 3 / 2);
 		for (int i = 0; i < values.length; ++i) {
-			set.add(values[i]);
+			map.put(values[i], values[values.length - i - 1]);
 		}
 		
 		for (int i = 0; i < values.length; ++i) {
-			assertTrue(set.contains(values[i]));
+			assertTrue(map.containsKey(values[i]));
 		}
 		
 		for (int i = 0; i < values.length; ++i) {
-			set.remove(values[i]);
+			map.remove(values[i]);
 		}
 	}
 	
@@ -90,18 +90,18 @@ public class IdHashSetPerformanceTest extends AbstractBenchmark {
 	 * Test our implementation
 	 */
 	@Test
-	public void idSet() {
-		IdSet set = new IdHashSet(values.length);
+	public void idMap() {
+		IdMap map = new IdHashMap(values.length);
 		for (int i = 0; i < values.length; ++i) {
-			set.add(values[i]);
+			map.put(values[i], values[values.length - i - 1]);
 		}
 		
 		for (int i = 0; i < values.length; ++i) {
-			assertTrue(set.contains(values[i]));
+			assertTrue(map.containsKey(values[i]));
 		}
 		
 		for (int i = 0; i < values.length; ++i) {
-			set.remove(values[i]);
+			map.remove(values[i]);
 		}
 	}
 }

@@ -19,7 +19,7 @@ package de.fhg.igd.mongomvcc.impl.internal;
 
 import java.util.Map;
 
-import gnu.trove.map.hash.TLongLongHashMap;
+import de.fhg.igd.mongomvcc.helper.IdMap;
 
 /**
  * A commit has a CID and stores references to added/changed database objects
@@ -46,7 +46,7 @@ public class Commit {
 	 * Objects added/changed in this commit. Maps collection names to maps of
 	 * UIDs and OIDs.
 	 */
-	private final Map<String, TLongLongHashMap> _objects;
+	private final Map<String, IdMap> _objects;
 	
 	/**
 	 * Constructs a new commit
@@ -57,7 +57,7 @@ public class Commit {
 	 * @param objects objects added/changed in this commit. Maps collection
 	 * names to maps of UIDs and OIDs.
 	 */
-	public Commit(long cid, long parentCID, long rootCID, Map<String, TLongLongHashMap> objects) {
+	public Commit(long cid, long parentCID, long rootCID, Map<String, IdMap> objects) {
 		_cid = cid;
 		_parentCID = parentCID;
 		_rootCID = rootCID;
@@ -91,7 +91,7 @@ public class Commit {
 	 * names to maps of UIDs and OIDs. For performance reasons the internal
 	 * map is returned here. Callers MUST NEVER change this map.
 	 */
-	public Map<String, TLongLongHashMap> getObjects() {
+	public Map<String, IdMap> getObjects() {
 		return _objects;
 	}
 }

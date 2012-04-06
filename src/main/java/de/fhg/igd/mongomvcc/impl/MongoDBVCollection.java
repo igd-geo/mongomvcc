@@ -17,8 +17,6 @@
 
 package de.fhg.igd.mongomvcc.impl;
 
-import gnu.trove.map.hash.TLongLongHashMap;
-
 import java.util.Map;
 
 import com.google.common.base.Predicate;
@@ -32,6 +30,7 @@ import de.fhg.igd.mongomvcc.VCollection;
 import de.fhg.igd.mongomvcc.VConstants;
 import de.fhg.igd.mongomvcc.VCounter;
 import de.fhg.igd.mongomvcc.VCursor;
+import de.fhg.igd.mongomvcc.helper.IdMap;
 import de.fhg.igd.mongomvcc.impl.internal.Index;
 import de.fhg.igd.mongomvcc.impl.internal.MongoDBConstants;
 
@@ -192,7 +191,7 @@ public class MongoDBVCollection implements VCollection {
 	@Override
 	public VCursor find() {
 		//ask index for OIDs
-		TLongLongHashMap objs = _branch.getIndex().find(_name);
+		IdMap objs = _branch.getIndex().find(_name);
 		if (objs.size() == 0) {
 			return MongoDBVCursor.EMPTY;
 		}

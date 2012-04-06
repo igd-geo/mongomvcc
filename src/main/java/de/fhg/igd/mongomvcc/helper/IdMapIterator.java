@@ -17,41 +17,33 @@
 
 package de.fhg.igd.mongomvcc.helper;
 
+import java.util.NoSuchElementException;
+
 /**
- * A set of long values
+ * Can be used to iterate through {@link IdMap}s
  * @author Michel Kraemer
  */
-public interface IdSet extends IdCollection {
+public interface IdMapIterator {
 	/**
-	 * Inserts a value into the set. This operation is essentially
-	 * a no-op if the value is already in the set.
-	 * @param value the value to insert
-	 * @return true if the value has been added, false if it already
-	 * was in the set
+	 * @return true if there is a next item in the set
 	 */
-	boolean add(long value);
+	boolean hasNext();
 	
 	/**
-	 * Checks if the set contains a given value
-	 * @param value the value
-	 * @return true if the set contains the value, false otherwise
+	 * Advances to the next item
+	 * @throws NoSuchElementException if there is no more item
 	 */
-	boolean contains(long value);
+	void advance() throws NoSuchElementException;
 	
 	/**
-	 * Removes a value from the set
-	 * @param value the value to remove
-	 * @return true if the value was in the set, false otherwise
+	 * @return the current key
+	 * @throws NoSuchElementException if there is no more item
 	 */
-	boolean remove(long value);
+	long key() throws NoSuchElementException;
 	
 	/**
-	 * @return an array containing all values currently in the set
+	 * @return the current value
+	 * @throws NoSuchElementException if there is no more item
 	 */
-	long[] toArray();
-	
-	/**
-	 * @return an iterator for this set
-	 */
-	IdSetIterator iterator();
+	long value() throws NoSuchElementException;
 }
