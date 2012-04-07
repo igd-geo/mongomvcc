@@ -1,0 +1,49 @@
+body {
+	background-color: #f3f3f3;
+	background-image: url(../img/bg.jpg);
+	background-position: top left;
+	background-repeat: repeat-x;
+	padding-top: 90px;
+
+	text-align: center;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+h1 {
+	font-size: 80px;
+	line-height: 90px;
+}
+
+.slogan {
+	font-size: 30px;
+	line-height: 40px;
+}
+
+.teaser {
+	padding-bottom: 40px;
+}
+
+.links {
+	padding: 10px 0px;
+}
+
+.quick-links, .github-links {
+	list-style: none;
+	padding: 5px 0px;
+	margin: 0px;
+}
+
+.quick-links li {
+	white-space: nowrap;
+	display: inline;
+	padding-left: 6px;
+	padding-right: 6px;
+}
+
+.github-links li {
+	white-space: nowrap;
+	display: inline;
+	padding-left: 0px;
+	padding-right: 0px;
+}
