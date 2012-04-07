@@ -25,7 +25,6 @@ import de.fhg.igd.mongomvcc.helper.IdHashSet;
 import de.fhg.igd.mongomvcc.helper.IdMap;
 import de.fhg.igd.mongomvcc.helper.IdMapIterator;
 import de.fhg.igd.mongomvcc.helper.IdSet;
-import de.fhg.igd.mongomvcc.impl.MongoDBVCollection;
 import de.fhg.igd.mongomvcc.impl.MongoDBVDatabase;
 
 /**
@@ -35,40 +34,6 @@ import de.fhg.igd.mongomvcc.impl.MongoDBVDatabase;
  * <p><strong>Thread-safety:</strong> This class is NOT thread-safe.
  * {@link MongoDBVDatabase} will hold a thread-local variable to restrict
  * access to this object.</p>
- * <p><strong>Hints for optimization:</strong> this implementation currently
- * still provides a lot possibilities to optimize.
- * <ul>
- * <li>One could differentiate between A and B commits. A commits would
- * contain the whole index (without deleted objects) and B commits would only
- * contain changes since their respective parent. Therefore, rebuilding the
- * index could be a lot faster</li>
- * <li>Currently the find methods of {@link MongoDBVCollection} use
- * {@link #containsOID(String, long)} to check if an object exists in this
- * index. Therefore, they load the whole object (only to use its OID).
- * It should be checked, if it would be faster to first retrieve OIDs only
- * and then (after filtering) make a second query.</li>
- * <li>Currently, each thread owns a separate index. In the future a pool
- * of index objects could be created, so several threads could share the same
- * index (for example if they only do read operations). If one thread
- * performs a write operation, the index instance should be cloned before.
- * The index instances in the pool could also be kept in memory, even if
- * there is no thread accessing the database anymore. This would allow
- * other threads in the future to quickly checkout branches/commits, if
- * they have already been indexed.</li>
- * <li>Using this implementation in practise will show if keeping all index
- * instances in memory is a good idea or if it leads to OutOfMemoryErrors.
- * Alternatively, indexes could be swapped out or the index could
- * be kept completely within the database (if that's possible).</li>
- * <li>There is a maximum BSON document size which directly affects the maximum
- * size of commits in the database (and therefore the maximum number of dirty
- * objects in the index). We will have to see how this performs in practise.
- * We may have to introduce chunked commits where each chunk adheres the
- * maximum BSON document size</li>
- * <li>It would be a nice idea to save the number of objects in the index
- * for each commit. This number could be used to pre-allocate the hash maps
- * in the index before the commits are resolved in {@link #readCommit(Commit, Tree)}</li>
- * </ul>
- * </p>
  * @author Michel Kraemer
  */
 public class Index {
