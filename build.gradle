@@ -33,7 +33,6 @@ allprojects {
     
     dependencies {
         compile 'org.mongodb:mongo-java-driver:2.7.3'
-        compile 'com.google.guava:guava:11.0.2'
         
         testCompile 'junit:junit:4.10'
         testCompile 'com.carrotsearch:junit-benchmarks:0.3.0'
