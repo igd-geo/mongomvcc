@@ -31,8 +31,8 @@ import java.util.NoSuchElementException;
 public class IdHashMap extends AbstractIdHashCollection implements IdMap {
 	/**
 	 * Constructs a new map with the default number of
-	 * expected elements ({@value #DEFAULT_EXPECTED_SIZE}) and
-	 * the default load factor ({@value #DEFAULT_LOAD_FACTOR})
+	 * expected elements (DEFAULT_EXPECTED_SIZE) and
+	 * the default load factor (DEFAULT_LOAD_FACTOR)
 	 */
 	public IdHashMap() {
 		this(DEFAULT_EXPECTED_SIZE);
@@ -41,7 +41,7 @@ public class IdHashMap extends AbstractIdHashCollection implements IdMap {
 	/**
 	 * Constructs a new map with the given number of
 	 * expected elements and the default load
-	 * factor ({@value #DEFAULT_LOAD_FACTOR})
+	 * factor (DEFAULT_LOAD_FACTOR)
 	 * @param expectedSize the number of expected elements
 	 */
 	public IdHashMap(int expectedSize) {
