@@ -19,15 +19,15 @@ package de.fhg.igd.mongomvcc.impl;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 
 import de.fhg.igd.mongomvcc.VCursor;
-
-import com.google.common.base.Function;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterators;
+import de.fhg.igd.mongomvcc.helper.Filter;
+import de.fhg.igd.mongomvcc.helper.FilteringIterator;
+import de.fhg.igd.mongomvcc.helper.TransformingIterator;
 
 /**
  * Implementation of {@link VCursor} for MongoDB
@@ -35,7 +35,7 @@ import com.google.common.collect.Iterators;
  */
 public class MongoDBVCursor implements VCursor {
 	private final DBCursor _delegate;
-	private final Predicate<DBObject> _filter;
+	private final Filter<DBObject> _filter;
 	
 	/**
 	 * An empty cursor
@@ -43,7 +43,23 @@ public class MongoDBVCursor implements VCursor {
 	public static VCursor EMPTY = new VCursor() {
 		@Override
 		public Iterator<Map<String, Object>> iterator() {
-			return Iterators.emptyIterator();
+			return new Iterator<Map<String, Object>>() {
+				@Override
+				public boolean hasNext() {
+					return false;
+				}
+
+				@Override
+				public Map<String, Object> next() {
+					throw new NoSuchElementException();
+				}
+
+				@Override
+				public void remove() {
+					throw new UnsupportedOperationException();
+				}
+				
+			};
 		}
 
 		@Override
@@ -66,7 +82,7 @@ public class MongoDBVCursor implements VCursor {
 	 * @param filter a filter which decides if a DBObject should be included
 	 * into the cursor's result or not (can be null)
 	 */
-	public MongoDBVCursor(DBCursor delegate, Predicate<DBObject> filter) {
+	public MongoDBVCursor(DBCursor delegate, Filter<DBObject> filter) {
 		_delegate = delegate;
 		_filter = filter;
 	}
@@ -75,25 +91,31 @@ public class MongoDBVCursor implements VCursor {
 	public Iterator<Map<String, Object>> iterator() {
 		Iterator<DBObject> it = _delegate.iterator();
 		if (_filter != null) {
-			it = Iterators.filter(it, _filter);
+			it = new FilteringIterator<DBObject>(it, _filter);
 		}
-		return Iterators.transform(it, new Function<DBObject, Map<String, Object>>() {
+		return new TransformingIterator<DBObject, Map<String, Object>>(it) {
 			@SuppressWarnings("unchecked")
 			@Override
-			public Map<String, Object> apply(DBObject input) {
+			protected Map<String, Object> transform(DBObject input) {
 				if (input instanceof Map) {
 					return (Map<String, Object>)input;
 				}
 				return input.toMap();
 			}
-		});
+		};
 	}
 
 	@Override
 	public int size() {
 		if (_filter != null) {
 			//very slow... bummer...
-			return Iterators.size(Iterators.filter(_delegate.iterator(), _filter));
+			Iterator<DBObject> i = new FilteringIterator<DBObject>(_delegate.iterator(), _filter);
+			int n = 0;
+			while (i.hasNext()) {
+				i.next();
+				++n;
+			}
+			return n;
 		}
 		return _delegate.size();
 	}

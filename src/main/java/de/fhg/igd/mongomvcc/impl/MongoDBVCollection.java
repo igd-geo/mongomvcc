@@ -19,7 +19,6 @@ package de.fhg.igd.mongomvcc.impl;
 
 import java.util.Map;
 
-import com.google.common.base.Predicate;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
@@ -30,6 +29,7 @@ import de.fhg.igd.mongomvcc.VCollection;
 import de.fhg.igd.mongomvcc.VConstants;
 import de.fhg.igd.mongomvcc.VCounter;
 import de.fhg.igd.mongomvcc.VCursor;
+import de.fhg.igd.mongomvcc.helper.Filter;
 import de.fhg.igd.mongomvcc.helper.IdMap;
 import de.fhg.igd.mongomvcc.impl.internal.Index;
 import de.fhg.igd.mongomvcc.impl.internal.MongoDBConstants;
@@ -79,7 +79,7 @@ public class MongoDBVCollection implements VCollection {
 	/**
 	 * A predicate which filters out objects with OIDs not in the current index
 	 */
-	private final class OIDInIndexFilter implements Predicate<DBObject> {
+	private final class OIDInIndexFilter implements Filter<DBObject> {
 		private final Index _idx;
 		
 		OIDInIndexFilter() {
@@ -87,7 +87,7 @@ public class MongoDBVCollection implements VCollection {
 		}
 		
 		@Override
-		public boolean apply(DBObject input) {
+		public boolean filter(DBObject input) {
 			return _idx.containsOID(_name, (Long)input.get(OID));
 		}
 	}
@@ -168,7 +168,7 @@ public class MongoDBVCollection implements VCollection {
 	 * into the cursor's result or not (can be null)
 	 * @return the cursor
 	 */
-	protected VCursor createCursor(DBCursor delegate, Predicate<DBObject> filter) {
+	protected VCursor createCursor(DBCursor delegate, Filter<DBObject> filter) {
 		return new MongoDBVCursor(delegate, filter);
 	}
 	
@@ -241,7 +241,7 @@ public class MongoDBVCollection implements VCollection {
 		OIDInIndexFilter filter = new OIDInIndexFilter();
 		DBCursor c = _delegate.find(o, EXCLUDELIFETIME);
 		for (DBObject obj : c) {
-			if (filter.apply(obj)) {
+			if (filter.filter(obj)) {
 				if (obj instanceof Map) {
 					return (Map<String, Object>)obj;
 				}

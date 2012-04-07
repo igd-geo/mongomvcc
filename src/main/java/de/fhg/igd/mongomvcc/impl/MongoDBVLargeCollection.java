@@ -21,9 +21,6 @@ import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Map;
 
-import com.google.common.base.Function;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterators;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
@@ -33,6 +30,8 @@ import com.mongodb.gridfs.GridFSInputFile;
 import de.fhg.igd.mongomvcc.VCounter;
 import de.fhg.igd.mongomvcc.VCursor;
 import de.fhg.igd.mongomvcc.VLargeCollection;
+import de.fhg.igd.mongomvcc.helper.Filter;
+import de.fhg.igd.mongomvcc.helper.TransformingIterator;
 
 /**
  * Saves primitive byte arrays and {@link InputStream}s in MongoDB's
@@ -47,21 +46,21 @@ public class MongoDBVLargeCollection extends MongoDBVCollection implements
 	 */
 	private class MongoDBVLargeCursor extends MongoDBVCursor {
 		/**
-		 * @see MongoDBVCursor#MongoDBVCursor(DBCursor, Predicate)
+		 * @see MongoDBVCursor#MongoDBVCursor(DBCursor, Filter)
 		 */
-		public MongoDBVLargeCursor(DBCursor delegate, Predicate<DBObject> filter) {
+		public MongoDBVLargeCursor(DBCursor delegate, Filter<DBObject> filter) {
 			super(delegate, filter);
 		}
 		
 		@Override
 		public Iterator<Map<String, Object>> iterator() {
-			return Iterators.transform(super.iterator(), new Function<Map<String, Object>, Map<String, Object>>() {
+			return new TransformingIterator<Map<String, Object>, Map<String, Object>>(super.iterator()) {
 				@Override
-				public Map<String, Object> apply(Map<String, Object> input) {
+				protected Map<String, Object> transform(Map<String, Object> input) {
 					_accessStrategy.onResolve(input);
 					return input;
 				}
-			});
+			};
 		}
 	}
 	
@@ -125,7 +124,7 @@ public class MongoDBVLargeCollection extends MongoDBVCollection implements
 	}
 	
 	@Override
-	protected VCursor createCursor(DBCursor delegate, Predicate<DBObject> filter) {
+	protected VCursor createCursor(DBCursor delegate, Filter<DBObject> filter) {
 		return new MongoDBVLargeCursor(delegate, filter);
 	}
 	
