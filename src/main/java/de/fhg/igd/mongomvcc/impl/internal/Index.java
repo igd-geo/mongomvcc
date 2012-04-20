@@ -124,7 +124,7 @@ public class Index {
 
 	/**
 	 * For a given collection, this method lazily retrieves
-	 * the map that maps UIDs of deleted objects to OIDs.
+	 * the map that maps UIDs of dirty objects to OIDs.
 	 * @param collection the collection's name
 	 * @return the map
 	 */
