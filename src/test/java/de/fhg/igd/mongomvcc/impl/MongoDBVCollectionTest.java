@@ -33,6 +33,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
+import com.mongodb.DBCursor;
+
 import de.fhg.igd.mongomvcc.VCollection;
 import de.fhg.igd.mongomvcc.VCursor;
 import de.fhg.igd.mongomvcc.VException;
@@ -412,5 +414,40 @@ public class MongoDBVCollectionTest extends AbstractMongoDBVDatabaseTest {
 		assertEquals(1, persons.find().size());
 		_master.rollback();
 		assertEquals(0, persons.find().size());
+	}
+	
+	/**
+	 * Tests if lifetime optimization takes effect. Objects that have
+	 * been deleted should not be loaded but filtered out on the
+	 * database level already.
+	 */
+	@Test
+	public void lifetimeDeletedOptimization() {
+		putPerson("Max", 6);
+		_master.commit();
+		
+		VCollection persons = _master.getCollection("persons");
+		VCursor cursor = persons.find();
+		DBCursor dbcursor = extractDBCursor(cursor);
+		assertEquals(1, cursor.size());
+		assertEquals(1, dbcursor.size());
+		
+		putPerson("Elvis", 3);
+		_master.commit();
+		
+		persons = _master.getCollection("persons");
+		cursor = persons.find();
+		dbcursor = extractDBCursor(cursor);
+		assertEquals(2, cursor.size());
+		assertEquals(2, dbcursor.size());
+		
+		persons.delete(_factory.createDocument("name", "Max"));
+		_master.commit();
+		
+		persons = _master.getCollection("persons");
+		cursor = persons.find();
+		dbcursor = extractDBCursor(cursor);
+		assertEquals(1, cursor.size());
+		assertEquals(1, dbcursor.size());
 	}
 }

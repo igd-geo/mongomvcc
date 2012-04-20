@@ -19,6 +19,7 @@ package de.fhg.igd.mongomvcc.impl;
 
 import static org.junit.Assert.assertNotNull;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,9 +27,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
+import com.mongodb.DBCursor;
+
 import de.fhg.igd.mongomvcc.VBranch;
 import de.fhg.igd.mongomvcc.VCollection;
 import de.fhg.igd.mongomvcc.VConstants;
+import de.fhg.igd.mongomvcc.VCursor;
 import de.fhg.igd.mongomvcc.VDatabase;
 import de.fhg.igd.mongomvcc.VFactory;
 
@@ -84,5 +88,29 @@ public abstract class AbstractMongoDBVDatabaseTest {
 		persons.insert(peter);
 		assertNotNull(peter.get("uid"));
 		return peter;
+	}
+	
+	/**
+	 * Extracts a {@link DBCursor} from a {@link VCursor}. Throws a
+	 * {@link IllegalStateException} if the cursor could not be extracted.
+	 * This method is useful if tests want to access the database
+	 * driver's cursor directly.
+	 * @param c the MongoMVCC cursor
+	 * @return the delegate cursor
+	 */
+	protected DBCursor extractDBCursor(VCursor c) {
+		try {
+			Field f = MongoDBVCursor.class.getDeclaredField("_delegate");
+			boolean accessible = f.isAccessible();
+			f.setAccessible(true);
+			try {
+				return (DBCursor)f.get(c);
+			} finally {
+				f.setAccessible(accessible);
+			}
+		} catch (Exception e) {
+			throw new IllegalStateException("Could not extract " +
+					"DBCursor from MongoDBVCursor", e);
+		}
 	}
 }
