@@ -83,4 +83,9 @@ public interface VDatabase {
 	 * @return the database's history
 	 */
 	VHistory getHistory();
+	
+	/**
+	 * @return a maintenance object
+	 */
+	VMaintenance getMaintenance();
 }

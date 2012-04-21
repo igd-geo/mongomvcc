@@ -30,6 +30,7 @@ import de.fhg.igd.mongomvcc.VCounter;
 import de.fhg.igd.mongomvcc.VDatabase;
 import de.fhg.igd.mongomvcc.VException;
 import de.fhg.igd.mongomvcc.VHistory;
+import de.fhg.igd.mongomvcc.VMaintenance;
 import de.fhg.igd.mongomvcc.helper.IdMap;
 import de.fhg.igd.mongomvcc.impl.internal.BuildInfo;
 import de.fhg.igd.mongomvcc.impl.internal.Commit;
@@ -180,5 +181,10 @@ public class MongoDBVDatabase implements VDatabase {
 	@Override
 	public VHistory getHistory() {
 		return _tree;
+	}
+	
+	@Override
+	public VMaintenance getMaintenance() {
+		return new MongoDBVMaintenance(this);
 	}
 }

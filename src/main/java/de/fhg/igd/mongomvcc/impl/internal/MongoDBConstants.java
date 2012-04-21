@@ -33,7 +33,27 @@ public abstract class MongoDBConstants {
 	public static final String ID = "_id";
 	
 	/**
+	 * A commit ID
+	 */
+	public final static String CID = "cid";
+	
+	/**
 	 * Information about a document's lifetime
 	 */
 	public static final String LIFETIME = "_lifetime";
+	
+	/**
+	 * A commit's timestamp
+	 */
+	public final static String TIMESTAMP = "time";
+	
+	/**
+	 * The name of the collection containing branches
+	 */
+	public final static String COLLECTION_BRANCHES = "_branches";
+	
+	/**
+	 * The name of the collection containing commits
+	 */
+	public final static String COLLECTION_COMMITS = "_commits";
 }

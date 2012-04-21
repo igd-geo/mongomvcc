@@ -43,17 +43,9 @@ public class Tree implements VHistory {
 	/**
 	 * Attribute names
 	 */
-	private final static String CID = "cid";
-	private final static String TIMESTAMP = "time";
 	private final static String ROOT_CID = "rootcid";
 	private final static String PARENT_CID = "parent";
 	private final static String OBJECTS = "objects";
-	
-	/**
-     * Collection names
-     */
-    private final static String COLLECTION_BRANCHES = "_branches";
-    private final static String COLLECTION_COMMITS = "_commits";
 	
 	/**
 	 * A collection storing all branches and their current heads
@@ -70,8 +62,8 @@ public class Tree implements VHistory {
 	 * @param db the MongoDB database
 	 */
 	public Tree(DB db) {
-		_branches = db.getCollection(COLLECTION_BRANCHES);
-		_commits = db.getCollection(COLLECTION_COMMITS);
+		_branches = db.getCollection(MongoDBConstants.COLLECTION_BRANCHES);
+		_commits = db.getCollection(MongoDBConstants.COLLECTION_COMMITS);
 	}
 	
 	/**
@@ -88,7 +80,7 @@ public class Tree implements VHistory {
 	public void addCommit(Commit commit) {
 		DBObject o = new BasicDBObject();
 		o.put(MongoDBConstants.ID, commit.getCID());
-		o.put(TIMESTAMP, commit.getTimestamp());
+		o.put(MongoDBConstants.TIMESTAMP, commit.getTimestamp());
 		o.put(PARENT_CID, commit.getParentCID());
 		o.put(ROOT_CID, commit.getRootCID());
 		DBObject objs = new BasicDBObject();
@@ -126,7 +118,7 @@ public class Tree implements VHistory {
 			//create branch
 			DBObject o = new BasicDBObject();
 			o.put(MongoDBConstants.ID, name);
-			o.put(CID, headCID);
+			o.put(MongoDBConstants.CID, headCID);
 			o.put(ROOT_CID, headCID);
 			_branches.insert(o, WriteConcern.FSYNC_SAFE);
 		}
@@ -144,7 +136,7 @@ public class Tree implements VHistory {
 	 */
 	public void updateBranchHead(String name, long headCID) {
 		_branches.update(new BasicDBObject(MongoDBConstants.ID, name),
-				new BasicDBObject("$set", new BasicDBObject(CID, headCID)),
+				new BasicDBObject("$set", new BasicDBObject(MongoDBConstants.CID, headCID)),
 				false, false, WriteConcern.FSYNC_SAFE);
 	}
 	
@@ -188,7 +180,7 @@ public class Tree implements VHistory {
 	 */
 	public Commit resolveBranch(String name) {
 		DBObject branch = findBranch(name);
-		return resolveCommit((Long)branch.get(CID));
+		return resolveCommit((Long)branch.get(MongoDBConstants.CID));
 	}
 
 	/**
@@ -222,7 +214,7 @@ public class Tree implements VHistory {
 		if (o == null) {
 			throw new VException("Unknown commit: " + cid);
 		}
-		Long timestampL = (Long)o.get(TIMESTAMP);
+		Long timestampL = (Long)o.get(MongoDBConstants.TIMESTAMP);
 		long timestamp = timestampL != null ? timestampL : 0;
 		long parentCID = (Long)o.get(PARENT_CID);
 		long rootCID = (Long)o.get(ROOT_CID);
