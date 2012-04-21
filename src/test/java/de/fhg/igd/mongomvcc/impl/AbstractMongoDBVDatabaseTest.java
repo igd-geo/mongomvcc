@@ -110,7 +110,28 @@ public abstract class AbstractMongoDBVDatabaseTest {
 			}
 		} catch (Exception e) {
 			throw new IllegalStateException("Could not extract " +
-					"DBCursor from MongoDBVCursor", e);
+					"DBCursor from VCursor", e);
+		}
+	}
+	
+	/**
+	 * Checks if the given {@link VCursor} has a filter attached to it
+	 * @param c the cursor
+	 * @return true if a filter is attached, false otherwise
+	 */
+	protected boolean hasAttachedFilter(VCursor c) {
+		try {
+			Field f = MongoDBVCursor.class.getDeclaredField("_filter");
+			boolean accessible = f.isAccessible();
+			f.setAccessible(true);
+			try {
+				return f.get(c) != null;
+			} finally {
+				f.setAccessible(accessible);
+			}
+		} catch (Exception e) {
+			throw new IllegalStateException("Could not extract " +
+					"filter from VCursor", e);
 		}
 	}
 }

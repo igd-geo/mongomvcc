@@ -20,6 +20,7 @@ package de.fhg.igd.mongomvcc.impl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.Iterator;
@@ -423,14 +424,17 @@ public class MongoDBVCollectionTest extends AbstractMongoDBVDatabaseTest {
 	 */
 	@Test
 	public void lifetimeDeletedOptimization() {
+		//insert two documents to skip in-index shortcut
 		putPerson("Max", 6);
+		putPerson("Pax", 8);
 		_master.commit();
 		
 		VCollection persons = _master.getCollection("persons");
 		VCursor cursor = persons.find();
 		DBCursor dbcursor = extractDBCursor(cursor);
-		assertEquals(1, cursor.size());
-		assertEquals(1, dbcursor.size());
+		assertEquals(2, cursor.size());
+		assertTrue(hasAttachedFilter(cursor));
+		assertEquals(2, dbcursor.size());
 		
 		putPerson("Elvis", 3);
 		_master.commit();
@@ -438,8 +442,9 @@ public class MongoDBVCollectionTest extends AbstractMongoDBVDatabaseTest {
 		persons = _master.getCollection("persons");
 		cursor = persons.find();
 		dbcursor = extractDBCursor(cursor);
-		assertEquals(2, cursor.size());
-		assertEquals(2, dbcursor.size());
+		assertEquals(3, cursor.size());
+		assertTrue(hasAttachedFilter(cursor));
+		assertEquals(3, dbcursor.size());
 		
 		persons.delete(_factory.createDocument("name", "Max"));
 		_master.commit();
@@ -447,7 +452,8 @@ public class MongoDBVCollectionTest extends AbstractMongoDBVDatabaseTest {
 		persons = _master.getCollection("persons");
 		cursor = persons.find();
 		dbcursor = extractDBCursor(cursor);
-		assertEquals(1, cursor.size());
-		assertEquals(1, dbcursor.size());
+		assertEquals(2, cursor.size());
+		assertTrue(hasAttachedFilter(cursor));
+		assertEquals(2, dbcursor.size());
 	}
 }
