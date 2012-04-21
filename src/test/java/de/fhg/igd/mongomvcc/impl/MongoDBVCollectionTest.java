@@ -22,6 +22,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeNotNull;
+import static org.junit.Assume.assumeTrue;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -32,10 +34,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.mongodb.DBCursor;
 
+import de.fhg.igd.mongomvcc.VBranch;
 import de.fhg.igd.mongomvcc.VCollection;
 import de.fhg.igd.mongomvcc.VCursor;
 import de.fhg.igd.mongomvcc.VException;
@@ -452,6 +456,34 @@ public class MongoDBVCollectionTest extends AbstractMongoDBVDatabaseTest {
 		persons = _master.getCollection("persons");
 		cursor = persons.find();
 		dbcursor = extractDBCursor(cursor);
+		assertEquals(2, cursor.size());
+		assertTrue(hasAttachedFilter(cursor));
+		assertEquals(2, dbcursor.size());
+	}
+	
+	/**
+	 * Tests if lifetime optimization takes effect. Objects that have
+	 * been inserted in a later commit should not be loaded but filtered
+	 * out on the database level already.
+	 */
+	@Test
+	@Ignore("Not ready yet. We need to implement full branch history.")
+	public void lifetimeInsertedLaterOptimization() {
+		//ignore this test if we're on MongoDB 1.x
+		assumeNotNull(((MongoDBVDatabase)_db).getBuildInfo());
+		assumeTrue(((MongoDBVDatabase)_db).getBuildInfo().getMajorVersion() >= 2);
+		
+		//insert two documents to skip in-index shortcut
+		putPerson("Max", 6);
+		putPerson("Pax", 8);
+		long firstCID = _master.commit();
+		putPerson("Elvis", 3);
+		_master.commit();
+		
+		VBranch oldMaster = _db.checkout(firstCID);
+		VCollection persons = oldMaster.getCollection("persons");
+		VCursor cursor = persons.find();
+		DBCursor dbcursor = extractDBCursor(cursor);
 		assertEquals(2, cursor.size());
 		assertTrue(hasAttachedFilter(cursor));
 		assertEquals(2, dbcursor.size());

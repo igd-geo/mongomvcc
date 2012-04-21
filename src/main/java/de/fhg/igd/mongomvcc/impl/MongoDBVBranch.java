@@ -27,12 +27,12 @@ import com.mongodb.gridfs.GridFS;
 
 import de.fhg.igd.mongomvcc.VBranch;
 import de.fhg.igd.mongomvcc.VCollection;
-import de.fhg.igd.mongomvcc.VCounter;
 import de.fhg.igd.mongomvcc.VException;
 import de.fhg.igd.mongomvcc.VLargeCollection;
 import de.fhg.igd.mongomvcc.helper.IdMap;
-import de.fhg.igd.mongomvcc.helper.IdSetIterator;
+import de.fhg.igd.mongomvcc.helper.IdMapIterator;
 import de.fhg.igd.mongomvcc.helper.IdSet;
+import de.fhg.igd.mongomvcc.helper.IdSetIterator;
 import de.fhg.igd.mongomvcc.impl.internal.Commit;
 import de.fhg.igd.mongomvcc.impl.internal.Index;
 import de.fhg.igd.mongomvcc.impl.internal.MongoDBConstants;
@@ -77,29 +77,22 @@ public class MongoDBVBranch implements VBranch {
 	private final Tree _tree;
 	
 	/**
-	 * The MongoDB database object
+	 * The database object
 	 */
-	private final DB _db;
-	
-	/**
-	 * A counter to generate unique IDs
-	 */
-	private final VCounter _counter;
+	private final MongoDBVDatabase _db;
 	
 	/**
 	 * Constructs a new branch object (not the branch itself)
 	 * @param name the branch's name (may be null for unnamed branches)
 	 * @param rootCid the CID of the branch's root
 	 * @param tree the tree of commits
-	 * @param db the MongoDB database object
-	 * @param counter a counter to generate unique IDs
+	 * @param db the database object
 	 */
-	public MongoDBVBranch(String name, long rootCid, Tree tree, DB db, VCounter counter) {
+	public MongoDBVBranch(String name, long rootCid, Tree tree, MongoDBVDatabase db) {
 		_name = name;
 		_rootCid = rootCid;
 		_tree = tree;
 		_db = db;
-		_counter = counter;
 	}
 	
 	/**
@@ -133,12 +126,14 @@ public class MongoDBVBranch implements VBranch {
 	
 	@Override
 	public VCollection getCollection(String name) {
-		return new MongoDBVCollection(_db.getCollection(name), this, _counter);
+		return new MongoDBVCollection(_db.getDB().getCollection(name), this, _db.getCounter());
 	}
 	
 	@Override
 	public VLargeCollection getLargeCollection(String name) {
-		return new MongoDBVLargeCollection(_db.getCollection(name), new GridFS(_db, name), this, _counter);
+		DB db = _db.getDB();
+		return new MongoDBVLargeCollection(db.getCollection(name),
+				new GridFS(db, name), this, _db.getCounter());
 	}
 	
 	/**
@@ -149,8 +144,9 @@ public class MongoDBVBranch implements VBranch {
 	 * @return the collection (never null)
 	 */
 	public VLargeCollection getLargeCollection(String name, AccessStrategy accessStrategy) {
-		return new MongoDBVLargeCollection(_db.getCollection(name), new GridFS(_db, name),
-				this, _counter, accessStrategy);
+		DB db = _db.getDB();
+		return new MongoDBVLargeCollection(db.getCollection(name), new GridFS(db, name),
+				this, _db.getCounter(), accessStrategy);
 	}
 	
 	/**
@@ -168,6 +164,13 @@ public class MongoDBVBranch implements VBranch {
 	}
 	
 	/**
+	 * @return the database from which this branch has been checked out
+	 */
+	public MongoDBVDatabase getDB() {
+		return _db;
+	}
+	
+	/**
 	 * @return the CID of this branch's root
 	 */
 	public long getRootCid() {
@@ -180,19 +183,41 @@ public class MongoDBVBranch implements VBranch {
 		//clone dirty objects because we clear them below
 		Map<String, IdMap> dos = new HashMap<String, IdMap>(idx.getDirtyObjects());
 		Commit head = getHeadCommit();
-		Commit c = new Commit(_counter.getNextId(), head.getCID(), _rootCid, dos);
+		Commit c = new Commit(_db.getCounter().getNextId(), head.getCID(), _rootCid, dos);
 		_tree.addCommit(c);
 		updateHead(c);
 		
 		//mark deleted objects as deleted in the database
-		String lifetimeAttr = "_lifetime." + getRootCid();
+		DB db = _db.getDB();
+		String lifetimeAttr = MongoDBConstants.LIFETIME + "." + getRootCid();
 		for (Map.Entry<String, IdSet> e : idx.getDeletedOids().entrySet()) {
-			DBCollection dbc = _db.getCollection(e.getKey());
+			DBCollection dbc = db.getCollection(e.getKey());
 			IdSetIterator li = e.getValue().iterator();
 			while (li.hasNext()) {
 				long oid = li.next();
+				//save the CID of the commit where the object has been deleted
 				dbc.update(new BasicDBObject(MongoDBConstants.ID, oid), new BasicDBObject("$set",
 						new BasicDBObject(lifetimeAttr, head.getCID())));
+			}
+		}
+		
+		//mark dirty objects as inserted
+		String instimeAttr = MongoDBConstants.LIFETIME + ".i" + getRootCid();
+		for (Map.Entry<String, IdMap> e : dos.entrySet()) {
+			DBCollection dbc = db.getCollection(e.getKey());
+			IdMap m = e.getValue();
+			IdMapIterator li = m.iterator();
+			while (li.hasNext()) {
+				li.advance();
+				long oid = li.value();
+				if (oid == -1) {
+					//the document has been inserted and then deleted again
+					//do not save time of insertion
+					continue;
+				}
+				//save the CID of the commit where the object has been inserted
+				dbc.update(new BasicDBObject(MongoDBConstants.ID, oid), new BasicDBObject("$set",
+						new BasicDBObject(instimeAttr, head.getCID())));
 			}
 		}
 		

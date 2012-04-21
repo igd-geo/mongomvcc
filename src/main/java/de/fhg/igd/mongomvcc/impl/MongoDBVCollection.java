@@ -31,6 +31,7 @@ import de.fhg.igd.mongomvcc.VCounter;
 import de.fhg.igd.mongomvcc.VCursor;
 import de.fhg.igd.mongomvcc.helper.Filter;
 import de.fhg.igd.mongomvcc.helper.IdMap;
+import de.fhg.igd.mongomvcc.impl.internal.CompatibilityHelper;
 import de.fhg.igd.mongomvcc.impl.internal.Index;
 import de.fhg.igd.mongomvcc.impl.internal.MongoDBConstants;
 
@@ -127,24 +128,11 @@ public class MongoDBVCollection implements VCollection {
 			dbo = new BasicDBObject(obj);
 		}
 		
-		//save lifetime
-		dbo.put(MongoDBConstants.LIFETIME, new BasicDBObject(
-				String.valueOf(_branch.getRootCid()), 0));
-
 		//insert object into database
 		_delegate.insert(dbo);
 		
-		//remove lifetime from the original object again
-		if (obj == dbo) {
-			obj.remove(MongoDBConstants.LIFETIME);
-		}
-		
 		//insert object into index
 		_branch.getIndex().insert(_name, uid, oid);
-	}
-	
-	private String getLifetimeBranchAttribute() {
-		return MongoDBConstants.LIFETIME + "." + _branch.getRootCid();
 	}
 	
 	@Override
@@ -178,13 +166,34 @@ public class MongoDBVCollection implements VCollection {
 	 */
 	private DBObject makeQueryObject() {
 		BasicDBList l = new BasicDBList();
-		String lba = getLifetimeBranchAttribute();
+		String lba = MongoDBConstants.LIFETIME + "." + _branch.getRootCid();
+		String iba = MongoDBConstants.LIFETIME + ".i" + _branch.getRootCid();
 		
-		//TODO this condition must be removed once we know the whole branching history
-		l.add(new BasicDBObject(lba, new BasicDBObject("$exists", false)));
+		//(1) check if there is information about the document's insertion
+		//    available. if not just include this object.
+		//    TODO this condition must be removed once we know the whole branching history
+		l.add(new BasicDBObject(iba, new BasicDBObject("$exists", false)));
 		
-		l.add(new BasicDBObject(lba, 0));
-		l.add(new BasicDBObject(lba, new BasicDBObject("$gt", _branch.getHead())));
+		if (!CompatibilityHelper.supportsAnd(_branch.getDB())) {
+			//(2) check if this commit has been deleted after this commit.
+			//    we use a $not here, so the query will also return 'true' if
+			//    the attribute is not set.
+			l.add(new BasicDBObject(lba, new BasicDBObject("$not",
+					new BasicDBObject("$lte", _branch.getHead()))));
+		} else {
+			BasicDBList l2 = new BasicDBList();
+			//(2) check if the object has been inserted in this commit or later
+			l2.add(new BasicDBObject(iba, new BasicDBObject("$lte", _branch.getHead())));
+			
+			//(3) check if the object has been deleted in this commit or a previous one
+			//    we use a $not here, so the query will also return 'true' if
+			//    the attribute is not set.
+			l2.add(new BasicDBObject(lba, new BasicDBObject("$not",
+					new BasicDBObject("$lte", _branch.getHead()))));
+			
+			l.add(new BasicDBObject("$and", l2));
+		}
+		
 		return new BasicDBObject("$or", l);
 	}
 	

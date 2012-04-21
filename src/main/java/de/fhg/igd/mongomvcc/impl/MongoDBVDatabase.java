@@ -136,7 +136,7 @@ public class MongoDBVDatabase implements VDatabase {
 	@Override
 	public VBranch checkout(String name) {
 		long rootCid = _tree.resolveBranchRootCid(name);
-		return new MongoDBVBranch(name, rootCid, _tree, _db, _counter);
+		return new MongoDBVBranch(name, rootCid, _tree, this);
 	}
 	
 	@Override
@@ -144,14 +144,14 @@ public class MongoDBVDatabase implements VDatabase {
 		if (!_tree.existsCommit(cid)) {
 			throw new VException("Unknown commit: " + cid);
 		}
-		return new MongoDBVBranch(null, cid, _tree, _db, _counter);
+		return new MongoDBVBranch(null, cid, _tree, this);
 	}
 	
 	@Override
 	public VBranch createBranch(String name, long headCID) {
 		Commit head = _tree.resolveCommit(headCID);
 		_tree.addBranch(name, headCID);
-		return new MongoDBVBranch(name, head.getRootCID(), _tree, _db, _counter);
+		return new MongoDBVBranch(name, head.getRootCID(), _tree, this);
 	}
 	
 	@Override
