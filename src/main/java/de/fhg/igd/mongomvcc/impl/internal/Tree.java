@@ -44,6 +44,7 @@ public class Tree implements VHistory {
 	 * Attribute names
 	 */
 	private final static String CID = "cid";
+	private final static String TIMESTAMP = "time";
 	private final static String ROOT_CID = "rootcid";
 	private final static String PARENT_CID = "parent";
 	private final static String OBJECTS = "objects";
@@ -87,6 +88,7 @@ public class Tree implements VHistory {
 	public void addCommit(Commit commit) {
 		DBObject o = new BasicDBObject();
 		o.put(MongoDBConstants.ID, commit.getCID());
+		o.put(TIMESTAMP, commit.getTimestamp());
 		o.put(PARENT_CID, commit.getParentCID());
 		o.put(ROOT_CID, commit.getRootCID());
 		DBObject objs = new BasicDBObject();
@@ -220,6 +222,8 @@ public class Tree implements VHistory {
 		if (o == null) {
 			throw new VException("Unknown commit: " + cid);
 		}
+		Long timestampL = (Long)o.get(TIMESTAMP);
+		long timestamp = timestampL != null ? timestampL : 0;
 		long parentCID = (Long)o.get(PARENT_CID);
 		long rootCID = (Long)o.get(ROOT_CID);
 		DBObject objs = (DBObject)o.get(OBJECTS);
@@ -229,7 +233,7 @@ public class Tree implements VHistory {
 				objects.put(k, resolveCollectionObjects((DBObject)objs.get(k)));
 			}
 		}
-		return new Commit(cid, parentCID, rootCID, objects);
+		return new Commit(cid, timestamp, parentCID, rootCID, objects);
 	}
 	
 	private IdMap resolveCollectionObjects(DBObject o) {

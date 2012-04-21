@@ -17,6 +17,7 @@
 
 package de.fhg.igd.mongomvcc.impl.internal;
 
+import java.util.Calendar;
 import java.util.Map;
 
 import de.fhg.igd.mongomvcc.helper.IdMap;
@@ -30,6 +31,11 @@ public class Commit {
 	 * The commit's ID
 	 */
 	private final long _cid;
+	
+	/**
+	 * The commit's timestamp (in milliseconds since epoch, UTC)
+	 */
+	private final long _timestamp;
 	
 	/**
 	 * The CID of this commit's parent. Can be 0 (zero) if there is no
@@ -49,7 +55,7 @@ public class Commit {
 	private final Map<String, IdMap> _objects;
 	
 	/**
-	 * Constructs a new commit
+	 * Constructs a new commit. Sets the commit's timestamp to the current time.
 	 * @param cid the commit's ID
 	 * @param parentCID the CID of this commit's parent. Can be 0 (zero) if
 	 * there is no parent (can only happen for the root commit)
@@ -58,7 +64,22 @@ public class Commit {
 	 * names to maps of UIDs and OIDs.
 	 */
 	public Commit(long cid, long parentCID, long rootCID, Map<String, IdMap> objects) {
+		this(cid, Calendar.getInstance().getTimeInMillis(), parentCID, rootCID, objects);
+	}
+	
+	/**
+	 * Constructs a new commit
+	 * @param cid the commit's ID
+	 * @param timestamp the commit's timestamp (in milliseconds since epoch, UTC)
+	 * @param parentCID the CID of this commit's parent. Can be 0 (zero) if
+	 * there is no parent (can only happen for the root commit)
+	 * @param rootCID the root CID of the branch this commit belongs to
+	 * @param objects objects added/changed in this commit. Maps collection
+	 * names to maps of UIDs and OIDs.
+	 */
+	public Commit(long cid, long timestamp, long parentCID, long rootCID, Map<String, IdMap> objects) {
 		_cid = cid;
+		_timestamp = timestamp;
 		_parentCID = parentCID;
 		_rootCID = rootCID;
 		_objects = objects;
@@ -69,6 +90,13 @@ public class Commit {
 	 */
 	public long getCID() {
 		return _cid;
+	}
+	
+	/**
+	 * @return the commit's timestamp (in milliseconds since epoch, UTC)
+	 */
+	public long getTimestamp() {
+		return _timestamp;
 	}
 	
 	/**
