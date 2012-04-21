@@ -4,6 +4,7 @@ gradle.properties
 target/
 
 bin/
+.externalToolBuilders/
 .settings/
 .classpath
 .project
