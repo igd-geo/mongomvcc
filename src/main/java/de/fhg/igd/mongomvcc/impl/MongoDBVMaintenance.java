@@ -70,7 +70,8 @@ public class MongoDBVMaintenance implements VMaintenance {
 		//load all commits which are older than the expiry time. mark them as dangling
 		DBCollection collCommits = _db.getDB().getCollection(MongoDBConstants.COLLECTION_COMMITS);
 		DBCursor commits = collCommits.find(new BasicDBObject(MongoDBConstants.TIMESTAMP,
-				new BasicDBObject("$lt", maxTime)), new BasicDBObject(MongoDBConstants.ID, 1));
+				new BasicDBObject("$not", new BasicDBObject("$gte", maxTime))), //also include commits without a timestamp
+				new BasicDBObject(MongoDBConstants.ID, 1));
 		IdSet danglingCommits = new IdHashSet();
 		for (DBObject o : commits) {
 			long cid = (Long)o.get(MongoDBConstants.ID);
