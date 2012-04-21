@@ -17,9 +17,11 @@
 
 package de.fhg.igd.mongomvcc.impl;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -34,6 +36,7 @@ import de.fhg.igd.mongomvcc.helper.IdMapIterator;
 import de.fhg.igd.mongomvcc.helper.IdSet;
 import de.fhg.igd.mongomvcc.helper.IdSetIterator;
 import de.fhg.igd.mongomvcc.impl.internal.Commit;
+import de.fhg.igd.mongomvcc.impl.internal.CompatibilityHelper;
 import de.fhg.igd.mongomvcc.impl.internal.Index;
 import de.fhg.igd.mongomvcc.impl.internal.MongoDBConstants;
 import de.fhg.igd.mongomvcc.impl.internal.Tree;
@@ -60,6 +63,13 @@ public class MongoDBVBranch implements VBranch {
 	 * checked out branch/commit and stores information on dirty objects.
 	 */
 	private final ThreadLocal<Index> _index = new ThreadLocal<Index>();
+	
+	/**
+	 * Holds the query object for the current head. A query object is used to
+	 * limit the number of objects transferred from the database.
+	 */
+	private final ThreadLocal<Map<String, Object>> _currentQueryObject =
+			new ThreadLocal<Map<String, Object>>();
 	
 	/**
 	 * The branch's name (may be null)
@@ -111,11 +121,58 @@ public class MongoDBVBranch implements VBranch {
 		return r;
 	}
 	
+	private Map<String, Object> makeQueryObject() {
+		BasicDBList l = new BasicDBList();
+		String lba = MongoDBConstants.LIFETIME + "." + getRootCid();
+		String iba = MongoDBConstants.LIFETIME + ".i" + getRootCid();
+		
+		//(1) check if there is information about the document's insertion
+		//    available. if not just include this object.
+		//    TODO this condition must be removed once we know the whole branching history
+		l.add(new BasicDBObject(iba, new BasicDBObject("$exists", false)));
+		
+		if (!CompatibilityHelper.supportsAnd(getDB())) {
+			//(2) check if the object has been deleted after this commit.
+			//    we use a $not here, so the query will also return 'true' if
+			//    the attribute is not set.
+			l.add(new BasicDBObject(lba, new BasicDBObject("$not",
+					new BasicDBObject("$lte", getHead()))));
+		} else {
+			BasicDBList l2 = new BasicDBList();
+			//(2) check if the object has been inserted in this commit or later
+			l2.add(new BasicDBObject(iba, new BasicDBObject("$lte", getHead())));
+			
+			//(3) check if the object has been deleted after this commit.
+			//    we use a $not here, so the query will also return 'true' if
+			//    the attribute is not set.
+			l2.add(new BasicDBObject(lba, new BasicDBObject("$not",
+					new BasicDBObject("$lte", getHead()))));
+			
+			l.add(new BasicDBObject("$and", l2));
+		}
+		
+		return Collections.unmodifiableMap(new BasicDBObject("$or", l));
+	}
+	
+	/**
+	 * @return a query object which limits the number of objects returned
+	 * by accessing their lifetime information
+	 */
+	public Map<String, Object> getQueryObject() {
+		Map<String, Object> r = _currentQueryObject.get();
+		if (r == null) {
+			r = makeQueryObject();
+			_currentQueryObject.set(r);
+		}
+		return r;
+	}
+	
 	/**
 	 * Updates the thread-local head of the currently checked out branch/commit
 	 * @param newHead the new head
 	 */
 	private void updateHead(Commit newHead) {
+		_currentQueryObject.remove();
 		_head.set(newHead);
 	}
 	
