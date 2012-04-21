@@ -19,6 +19,7 @@ package de.fhg.igd.mongomvcc.impl;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.util.concurrent.TimeUnit;
 
@@ -26,19 +27,14 @@ import org.junit.Test;
 
 import de.fhg.igd.mongomvcc.VBranch;
 import de.fhg.igd.mongomvcc.VCollection;
+import de.fhg.igd.mongomvcc.VException;
 
 /**
  * Tests {@link MongoDBVMaintenance}
  * @author Michel Kraemer
  */
 public class MongoDBVMaintenanceTest extends AbstractMongoDBVDatabaseTest {
-	/**
-	 * Tests if dangling commits can be found
-	 * @throws InterruptedException if the test could not wait
-	 * for commits to expire
-	 */
-	@Test
-	public void findDanglingCommits() throws InterruptedException {
+	private Object[] makeDanglingCommits() throws InterruptedException {
 		putPerson("Max", 6);
 		long cid1 = _master.commit();
 		VBranch master2 = _db.createBranch("master2", cid1);
@@ -75,17 +71,52 @@ public class MongoDBVMaintenanceTest extends AbstractMongoDBVDatabaseTest {
 		persons3a.insert(_factory.createDocument("name", "Brenda"));
 		long cid8 = master3a.commit();
 		
+		return new Object[] { new long[] { cid5, cid6, cid7, cid8 }, stime };
+	}
+	
+	/**
+	 * Tests if dangling commits can be found
+	 * @throws InterruptedException if the test could not wait
+	 * for commits to expire
+	 */
+	@Test
+	public void findDanglingCommits() throws InterruptedException {
+		Object[] oa = makeDanglingCommits();
+		long[] dangling = (long[])oa[0];
+		long stime = (Long)oa[1];
+		
 		long[] dc = _db.getMaintenance().findDanglingCommits(0, TimeUnit.MILLISECONDS);
 		assertEquals(4, dc.length);
-		assertArrayEquals(new long[] { cid5, cid6, cid7, cid8 }, dc);
+		assertArrayEquals(dangling, dc);
 		
 		long[] dc2 = _db.getMaintenance().findDanglingCommits(
 				System.currentTimeMillis() - stime - 250, TimeUnit.MILLISECONDS);
 		assertEquals(3, dc2.length);
-		assertArrayEquals(new long[] { cid5, cid6, cid7 }, dc2);
+		assertArrayEquals(new long[] { dangling[0], dangling[1], dangling[2] }, dc2);
 		
 		//this unit test should not run longer than 2 days :-)
 		long[] dc3 = _db.getMaintenance().findDanglingCommits(2, TimeUnit.DAYS);
 		assertEquals(0, dc3.length);
+	}
+	
+	/**
+	 * Tests if dangling commits can be deleted
+	 * @throws InterruptedException if the test could not wait
+	 * for commits to expire
+	 */
+	@Test
+	public void pruneDanglingCommits() throws InterruptedException {
+		Object[] oa = makeDanglingCommits();
+		long[] dangling = (long[])oa[0];
+		
+		long count = _db.getMaintenance().pruneDanglingCommits(0, TimeUnit.MILLISECONDS);
+		assertEquals(4, count);
+		
+		for (int i = 0; i < 4; ++i) {
+			try {
+				_db.checkout(dangling[i]);
+				fail();
+			} catch(VException e) { /* ignore */ }
+		}
 	}
 }

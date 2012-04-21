@@ -62,6 +62,25 @@ public class MongoDBVMaintenance implements VMaintenance {
 		}
 	}
 	
+	@Override
+	public long pruneDanglingCommits(long expiry, TimeUnit unit) {
+		long[] cids = findDanglingCommits(expiry, unit);
+		DBCollection collCommits = _db.getDB().getCollection(MongoDBConstants.COLLECTION_COMMITS);
+		
+		//delete commits in chunks, so we avoid sending an array that is
+		//larger than the maximum document size
+		final int sliceCount = 1000;
+		for (int i = 0; i < cids.length; i += sliceCount) {
+			int maxSliceCount = Math.min(sliceCount, cids.length - i);
+			long[] slice = new long[maxSliceCount];
+			System.arraycopy(cids, i, slice, 0, maxSliceCount);
+			collCommits.remove(new BasicDBObject(MongoDBConstants.ID,
+					new BasicDBObject("$in", slice)));
+		}
+		
+		return cids.length;
+	}
+	
 	private long[] doFindDanglingCommits(long expiry, TimeUnit unit) {
 		long expiryMillis = unit.toMillis(expiry);
 		long currentTime = Calendar.getInstance().getTimeInMillis();

@@ -47,4 +47,23 @@ public interface VMaintenance {
 	 * @return the dangling commits which are older than the given expiry time
 	 */
 	long[] findDanglingCommits(long expiry, TimeUnit unit);
+	
+	/**
+	 * <p>Deletes all dangling commits from the database. Only those
+	 * commits are considered which are older than the given expiry time (i.e.
+	 * a commit which has been added just a minute ago will not be considered
+	 * if the expiry time is larger than one minute).</p>
+	 * <p><strong>Attention: this is a distructive method. Commits may
+	 * seem dangling but they might still be needed by some other
+	 * thread/process. Please make sure you're absolutely sure what you are
+	 * doing before calling this method. Accidentally deleting non-dangling
+	 * commits may leave your database in a broken state! A good strategy
+	 * to avoid this is to choose an expiry time that is long enough for
+	 * all your transactions.</strong></p>
+	 * @param expiry the expiry time. Only those commits older than this
+	 * time will be considered.
+	 * @param unit the time unit for the expiry argument
+	 * @return the number of commits removed
+	 */
+	long pruneDanglingCommits(long expiry, TimeUnit unit);
 }
