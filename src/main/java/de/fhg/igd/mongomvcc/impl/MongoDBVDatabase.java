@@ -20,6 +20,7 @@ package de.fhg.igd.mongomvcc.impl;
 import java.net.UnknownHostException;
 import java.util.Collections;
 
+import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.Mongo;
 
@@ -30,6 +31,7 @@ import de.fhg.igd.mongomvcc.VDatabase;
 import de.fhg.igd.mongomvcc.VException;
 import de.fhg.igd.mongomvcc.VHistory;
 import de.fhg.igd.mongomvcc.helper.IdMap;
+import de.fhg.igd.mongomvcc.impl.internal.BuildInfo;
 import de.fhg.igd.mongomvcc.impl.internal.Commit;
 import de.fhg.igd.mongomvcc.impl.internal.Tree;
 
@@ -53,6 +55,12 @@ public class MongoDBVDatabase implements VDatabase {
 	 */
 	private Tree _tree;
 	
+	/**
+	 * Build information about the database instance (may be null if the
+	 * information is not available)
+	 */
+	private BuildInfo _buildInfo;
+	
 	@Override
 	public void connect(String name) throws VException {
 		Mongo mongo;
@@ -61,6 +69,9 @@ public class MongoDBVDatabase implements VDatabase {
 		} catch (UnknownHostException e) {
 			throw new VException("Unknown host", e);
 		}
+		
+		_buildInfo = initBuildInfo(mongo);
+		
 		_db = mongo.getDB(name);
 		_counter = new MongoDBVCounter(_db);
 		_tree = new Tree(_db);
@@ -72,6 +83,49 @@ public class MongoDBVDatabase implements VDatabase {
 			_tree.addCommit(root);
 			_tree.addBranch(VConstants.MASTER, root.getCID());
 		}
+	}
+	
+	/**
+	 * Obtains build information from the database instance. If any value is
+	 * not available, this method will return <code>null</code>.
+	 * @param mongo the database
+	 * @return the build information or <code>null</code>
+	 */
+	private static BuildInfo initBuildInfo(Mongo mongo) {
+		DB db = mongo.getDB("admin");
+		if (db == null) {
+			return null;
+		}
+		CommandResult cr = db.command("buildInfo");
+		String version = (String)cr.get("version");
+		if (version == null) {
+			return null;
+		}
+		String[] vss = version.split("\\.");
+		if (vss.length <= 2) {
+			return null;
+		}
+		try {
+			return new BuildInfo(Integer.parseInt(vss[0]), Integer.parseInt(vss[1]),
+					Integer.parseInt(vss[2]));
+		} catch (NumberFormatException e) {
+			return null;
+		}
+	}
+	
+	/**
+	 * @return the underlying MongoDB database
+	 */
+	public DB getDB() {
+		return _db;
+	}
+	
+	/**
+	 * @return build information about the database instance (may be null if the
+	 * information is not available)
+	 */
+	public BuildInfo getBuildInfo() {
+		return _buildInfo;
 	}
 
 	@Override
