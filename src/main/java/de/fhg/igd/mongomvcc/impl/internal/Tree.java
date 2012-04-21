@@ -156,6 +156,15 @@ public class Tree implements VHistory {
 	}
 	
 	/**
+	 * Checks if a branch with the given root CID exists
+	 * @param rootCID the root CID
+	 * @return true if the branch exists, false otherwise
+	 */
+	public boolean existsBranch(long rootCID) {
+		return _branches.count(new BasicDBObject(ROOT_CID, rootCID)) > 0;
+	}
+	
+	/**
 	 * Loads a branch from the database or fails if it does not exist
 	 * @param name the branch's name
 	 * @return the document representing the branch
@@ -254,5 +263,17 @@ public class Tree implements VHistory {
 			r[i++] = (Long)o.get(MongoDBConstants.ID);
 		}
 		return r;
+	}
+	
+	/**
+	 * Checks if a given commit has got children
+	 * @param cid the commit's CID
+	 * @return true if the commit has children, false otherwise
+	 */
+	public boolean hasChildren(long cid) {
+		if (cid != 0 && !existsCommit(cid)) {
+			throw new VException("Unknown commit: " + cid);
+		}
+		return (_commits.count(new BasicDBObject(PARENT_CID, cid)) > 0);
 	}
 }

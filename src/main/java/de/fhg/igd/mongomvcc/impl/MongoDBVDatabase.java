@@ -139,19 +139,37 @@ public class MongoDBVDatabase implements VDatabase {
 		return new MongoDBVBranch(name, rootCid, _tree, this);
 	}
 	
+	/**
+	 * Determines the root CID for a new branch. Checks if the commit with
+	 * the given CID already belongs to a named branch or if it already has
+	 * children. If so, the root for the new branch will be the given CID.
+	 * Otherwise it is assumed that the commit is the head of an unnamed
+	 * branch and so the commit's root ID will be returned.
+	 * @param cid the CID of the commit to branch from
+	 * @return the root CID for the new branch
+	 */
+	private long determineRootForBranch(long cid) {
+		Commit head = _tree.resolveCommit(cid);
+		long root = head.getRootCID();
+		if (_tree.existsBranch(root) || _tree.hasChildren(cid)) {
+			//we're trying to create a branch from a commit that belongs
+			//to an existing branch. create a new branch from here on.
+			root = cid;
+		}
+		return root;
+	}
+	
 	@Override
 	public VBranch checkout(long cid) {
-		if (!_tree.existsCommit(cid)) {
-			throw new VException("Unknown commit: " + cid);
-		}
-		return new MongoDBVBranch(null, cid, _tree, this);
+		long root = determineRootForBranch(cid);
+		return new MongoDBVBranch(null, root, _tree, this);
 	}
 	
 	@Override
 	public VBranch createBranch(String name, long headCID) {
-		Commit head = _tree.resolveCommit(headCID);
-		_tree.addBranch(name, headCID);
-		return new MongoDBVBranch(name, head.getRootCID(), _tree, this);
+		long root = determineRootForBranch(headCID);
+		_tree.addBranch(name, root);
+		return new MongoDBVBranch(name, root, _tree, this);
 	}
 	
 	@Override
