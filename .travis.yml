@@ -1,3 +1,2 @@
-language: java
-script: gradle test
+script: "gradle -q test"
 
