@@ -21,13 +21,22 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
+import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
+import com.mongodb.Mongo;
+
 import de.fhg.igd.mongomvcc.VBranch;
 import de.fhg.igd.mongomvcc.VCollection;
 import de.fhg.igd.mongomvcc.VException;
+import de.fhg.igd.mongomvcc.impl.internal.MongoDBConstants;
 
 /**
  * Tests {@link MongoDBVMaintenance}
@@ -118,5 +127,83 @@ public class MongoDBVMaintenanceTest extends AbstractMongoDBVDatabaseTest {
 				fail();
 			} catch(VException e) { /* ignore */ }
 		}
+	}
+	
+	private Object[] makeUnreferencedDocuments() throws InterruptedException {
+		long[] r = new long[3];
+		
+		putPerson("Max", 6);
+		long cid1 = _master.commit();
+		putPerson("Brenda", 40);
+		_master.commit();
+		Map<String, Object> elvis = putPerson("Elvis", 3);
+		r[0] = (Long)elvis.get(MongoDBConstants.ID);
+		
+		VBranch master2 = _db.createBranch("master2", cid1);
+		VCollection persons2 = master2.getCollection("persons");
+		persons2.insert(_factory.createDocument("name", "Howard"));
+		master2.commit();
+		Map<String, Object> fritz = _factory.createDocument("name", "Fritz");
+		persons2.insert(fritz);
+		r[1] = (Long)fritz.get(MongoDBConstants.ID);
+		
+		long stime = System.currentTimeMillis();
+		Thread.sleep(500);
+		
+		Map<String, Object> david = _factory.createDocument("name", "David");
+		persons2.insert(david);
+		r[2] = (Long)david.get(MongoDBConstants.ID);
+		
+		return new Object[] { r, stime };
+	}
+	
+	/**
+	 * Tests if unreferenced documents can be found
+	 * @throws InterruptedException if the test could not wait
+	 * for documents to expire
+	 */
+	@Test
+	public void findUnreferencedDocuments() throws InterruptedException {
+		Object[] ud = makeUnreferencedDocuments();
+		long[] unreferenced = (long[])ud[0];
+		long stime = (Long)ud[1];
+		
+		long[] fu = _db.getMaintenance().findUnreferencedDocuments("persons", 0, TimeUnit.MILLISECONDS);
+		Arrays.sort(fu);
+		assertEquals(3, fu.length);
+		assertArrayEquals(unreferenced, fu);
+		
+		long[] fu2 = _db.getMaintenance().findUnreferencedDocuments("persons",
+				System.currentTimeMillis() - stime - 250, TimeUnit.MILLISECONDS);
+		Arrays.sort(fu2);
+		assertEquals(2, fu2.length);
+		assertArrayEquals(new long[] { unreferenced[0], unreferenced[1] }, fu2);
+		
+		//this unit test should not run longer than 2 days :-)
+		long[] fu3 = _db.getMaintenance().findUnreferencedDocuments("persons", 2, TimeUnit.DAYS);
+		assertEquals(0, fu3.length);
+	}
+	
+	/**
+	 * Tests if unreferenced documents can be deleted
+	 * @throws Exception if something goes wrong
+	 */
+	@Test
+	public void pruneUnreferencedDocuments() throws Exception {
+		Object[] ud = makeUnreferencedDocuments();
+		long[] unreferenced = (long[])ud[0];
+		
+		long count = _db.getMaintenance().pruneUnreferencedDocuments("persons",
+				0, TimeUnit.MILLISECONDS);
+		assertEquals(3, count);
+		
+		Mongo mongo = new Mongo();
+		DB db = mongo.getDB("mvcctest");
+		DBCollection personsColl = db.getCollection("persons");
+		for (int i = 0; i < 3; ++i) {
+			DBCursor cursor = personsColl.find(new BasicDBObject(MongoDBConstants.ID, unreferenced[i]));
+			assertEquals(0, cursor.size());
+		}
+		assertEquals(3, personsColl.find().size());
 	}
 }

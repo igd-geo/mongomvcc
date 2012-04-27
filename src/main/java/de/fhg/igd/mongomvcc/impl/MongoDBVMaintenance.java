@@ -17,7 +17,7 @@
 
 package de.fhg.igd.mongomvcc.impl;
 
-import java.util.Calendar;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.mongodb.BasicDBObject;
@@ -28,8 +28,12 @@ import com.mongodb.DBObject;
 import de.fhg.igd.mongomvcc.VHistory;
 import de.fhg.igd.mongomvcc.VMaintenance;
 import de.fhg.igd.mongomvcc.helper.IdHashSet;
+import de.fhg.igd.mongomvcc.helper.IdMap;
+import de.fhg.igd.mongomvcc.helper.IdMapIterator;
 import de.fhg.igd.mongomvcc.helper.IdSet;
+import de.fhg.igd.mongomvcc.impl.internal.Commit;
 import de.fhg.igd.mongomvcc.impl.internal.MongoDBConstants;
+import de.fhg.igd.mongomvcc.impl.internal.Tree;
 
 /**
  * MongoDB implementation of MVCC database maintenance operations. Locks
@@ -81,10 +85,15 @@ public class MongoDBVMaintenance implements VMaintenance {
 		return cids.length;
 	}
 	
-	private long[] doFindDanglingCommits(long expiry, TimeUnit unit) {
+	private long getMaxTime(long expiry, TimeUnit unit) {
 		long expiryMillis = unit.toMillis(expiry);
-		long currentTime = Calendar.getInstance().getTimeInMillis();
+		long currentTime = System.currentTimeMillis();
 		long maxTime = currentTime - expiryMillis;
+		return maxTime;
+	}
+	
+	private long[] doFindDanglingCommits(long expiry, TimeUnit unit) {
+		long maxTime = getMaxTime(expiry, unit);
 		
 		//load all commits which are older than the expiry time. mark them as dangling
 		DBCollection collCommits = _db.getDB().getCollection(MongoDBConstants.COLLECTION_COMMITS);
@@ -116,5 +125,70 @@ public class MongoDBVMaintenance implements VMaintenance {
 		
 		//all remaining commits must be dangling
 		return danglingCommits.toArray();
+	}
+
+	@Override
+	public long[] findUnreferencedDocuments(String collection, long expiry,
+			TimeUnit unit) {
+		_db.getDB().getMongo().fsyncAndLock();
+		try {
+			return doFindUnreferencedDocuments(collection, expiry, unit);
+		} finally {
+			_db.getDB().getMongo().unlock();
+		}
+	}
+	
+	@Override
+	public long pruneUnreferencedDocuments(String collection, long expiry,
+			TimeUnit unit) {
+		long[] oids = findUnreferencedDocuments(collection, expiry, unit);
+		DBCollection coll = _db.getDB().getCollection(collection);
+		
+		//delete documents in chunks, so we avoid sending an array that is
+		//larger than the maximum document size
+		final int sliceCount = 1000;
+		for (int i = 0; i < oids.length; i += sliceCount) {
+			int maxSliceCount = Math.min(sliceCount, oids.length - i);
+			long[] slice = new long[maxSliceCount];
+			System.arraycopy(oids, i, slice, 0, maxSliceCount);
+			coll.remove(new BasicDBObject(MongoDBConstants.ID,
+					new BasicDBObject("$in", slice)));
+		}
+		
+		return oids.length;
+	}
+	
+	private long[] doFindUnreferencedDocuments(String collection, long expiry,
+			TimeUnit unit) {
+		long maxTime = getMaxTime(expiry, unit);
+		
+		//fetch the OIDs of all documents older than the expiry time
+		DBCollection collDocs = _db.getDB().getCollection(collection);
+		DBCursor docs = collDocs.find(new BasicDBObject(MongoDBConstants.TIMESTAMP,
+				new BasicDBObject("$not", new BasicDBObject("$gte", maxTime))), //also include docs without a timestamp
+				new BasicDBObject(MongoDBConstants.ID, 1));
+		IdSet oids = new IdHashSet(docs.count());
+		for (DBObject o : docs) {
+			oids.add((Long)o.get(MongoDBConstants.ID));
+		}
+		
+		//iterate through all commits and eliminate referenced documents
+		DBCollection collCommits = _db.getDB().getCollection(MongoDBConstants.COLLECTION_COMMITS);
+		for (DBObject o : collCommits.find()) {
+			Commit c = Tree.deserializeCommit(o);
+			Map<String, IdMap> allObjs = c.getObjects();
+			IdMap objs = allObjs.get(collection);
+			if (objs != null) {
+				//eliminate OIDs referenced by this commit
+				IdMapIterator mi = objs.iterator();
+				while (mi.hasNext()) {
+					mi.advance();
+					oids.remove(mi.value());
+				}
+			}
+		}
+		
+		//the remaining OIDs must be the unreferenced ones
+		return oids.toArray();
 	}
 }

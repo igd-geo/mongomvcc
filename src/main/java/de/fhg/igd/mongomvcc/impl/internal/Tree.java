@@ -214,6 +214,16 @@ public class Tree implements VHistory {
 		if (o == null) {
 			throw new VException("Unknown commit: " + cid);
 		}
+		return deserializeCommit(o);
+	}
+
+	/**
+	 * Deserializes a database object to a commit
+	 * @param o the object
+	 * @return the commit
+	 */
+	public static Commit deserializeCommit(DBObject o) {
+		long cid = (Long)o.get(MongoDBConstants.ID);
 		Long timestampL = (Long)o.get(MongoDBConstants.TIMESTAMP);
 		long timestamp = timestampL != null ? timestampL : 0;
 		long parentCID = (Long)o.get(PARENT_CID);
@@ -228,7 +238,7 @@ public class Tree implements VHistory {
 		return new Commit(cid, timestamp, parentCID, rootCID, objects);
 	}
 	
-	private IdMap resolveCollectionObjects(DBObject o) {
+	private static IdMap resolveCollectionObjects(DBObject o) {
 		Set<String> keys = o.keySet();
 		IdMap r = new IdHashMap(keys.size());
 		for (String k : keys) {

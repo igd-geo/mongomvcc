@@ -66,4 +66,44 @@ public interface VMaintenance {
 	 * @return the number of commits removed
 	 */
 	long pruneDanglingCommits(long expiry, TimeUnit unit);
+	
+	/**
+	 * <p>Finds documents which do not belong to a commit. Only those
+	 * documents are considered which are older than the given expiry time
+	 * (i.e. a document that has been added just a minute ago will not be
+	 * considered if the expiry time is larger than one minute).</p>
+	 * <p><strong>Attention: this method may return documents that seem to be
+	 * unreferenced but are still be needed by some other thread/process
+	 * that is just about to create a new commit. Please do not delete such
+	 * documents from the database if you're unsure whether they are still
+	 * needed. A good strategy to avoid such situations is to use a long
+	 * expiry time, so only documents which are very old will be
+	 * considered.</strong></p>
+	 * @param collection the name of the collection to search
+	 * @param expiry the expiry time. Only those documents older than this
+	 * time will be considered.
+	 * @param unit the time unit for the expiry argument
+	 * @return the OIDs of unreferenced documents older than the given expiry time
+	 */
+	long[] findUnreferencedDocuments(String collection, long expiry, TimeUnit unit);
+	
+	/**
+	 * <p>Deletes all unreferenced documents from the database. Only those
+	 * documents are considered which are older than the given expiry time
+	 * (i.e. a document that has been added just a minute ago will not be
+	 * considered if the expiry time is larger than one minute).</p>
+	 * <p><strong>Attention: this is a destructive method. Documents may
+	 * seem unreferenced but they might still be needed by some other
+	 * thread/process which is just about to create a new commit. Please make
+	 * sure you're absolutely sure what you are doing before calling this
+	 * method. Accidentally deleting referenced documents may leave your
+	 * database in a broken state! A good strategy to avoid this is to choose
+	 * an expiry time that is long enough for all your transactions.</strong></p>
+	 * @param collection the name of the collection to search
+	 * @param expiry the expiry time. Only those documents older than this
+	 * time will be considered.
+	 * @param unit the time unit for the expiry argument
+	 * @return the number of documents removed
+	 */
+	long pruneUnreferencedDocuments(String collection, long expiry, TimeUnit unit);
 }
