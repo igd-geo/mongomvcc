@@ -43,9 +43,9 @@ public abstract class MongoDBConstants {
 	public static final String LIFETIME = "_lifetime";
 	
 	/**
-	 * A commit's timestamp
+	 * The timestamp of a commit or a document
 	 */
-	public final static String TIMESTAMP = "time";
+	public final static String TIMESTAMP = "_time";
 	
 	/**
 	 * The name of the collection containing branches

@@ -51,9 +51,13 @@ public class MongoDBVCollection implements VCollection {
 	
 	/**
 	 * A {@link DBObject} that can be passed to find methods in order
-	 * to exclude the {@link MongoDBConstants#LIFETIME} field from the result
+	 * to exclude the hidden fields from the result
 	 */
-	protected final static DBObject EXCLUDELIFETIME = new BasicDBObject(MongoDBConstants.LIFETIME, 0);
+	protected final static DBObject EXCLUDEHIDDENATTRS = new BasicDBObject();
+	static {
+		EXCLUDEHIDDENATTRS.put(MongoDBConstants.LIFETIME, 0);
+		EXCLUDEHIDDENATTRS.put(MongoDBConstants.TIMESTAMP, 0);
+	}
 	
 	/**
 	 * The actual MongoDB collection
@@ -126,8 +130,16 @@ public class MongoDBVCollection implements VCollection {
 			dbo = new BasicDBObject(obj);
 		}
 		
+		//insert timestamp
+		dbo.put(MongoDBConstants.TIMESTAMP, System.currentTimeMillis());
+		
 		//insert object into database
 		_delegate.insert(dbo);
+		
+		if (dbo == obj) {
+			//remove timestamp from original document
+			obj.remove(MongoDBConstants.TIMESTAMP);
+		}
 		
 		//insert object into index
 		_branch.getIndex().insert(_name, uid, oid);
@@ -169,11 +181,11 @@ public class MongoDBVCollection implements VCollection {
 		//ask MongoDB for objects with the given OIDs
 		if (objs.size() == 1) {
 			//shortcut for one object
-			return createCursor(_delegate.find(new BasicDBObject(OID, objs.values()[0]), EXCLUDELIFETIME), null);
+			return createCursor(_delegate.find(new BasicDBObject(OID, objs.values()[0]), EXCLUDEHIDDENATTRS), null);
 		} else {
 			DBObject qo = new BasicDBObject();
 			qo.putAll(_branch.getQueryObject());
-			return createCursor(_delegate.find(qo, EXCLUDELIFETIME), new OIDInIndexFilter());
+			return createCursor(_delegate.find(qo, EXCLUDEHIDDENATTRS), new OIDInIndexFilter());
 		}
 	}
 	
@@ -182,7 +194,7 @@ public class MongoDBVCollection implements VCollection {
 		DBObject o = new BasicDBObject();
 		o.putAll(_branch.getQueryObject());
 		o.putAll(example);
-		return createCursor(_delegate.find(o, EXCLUDELIFETIME), new OIDInIndexFilter());
+		return createCursor(_delegate.find(o, EXCLUDEHIDDENATTRS), new OIDInIndexFilter());
 	}
 	
 	@Override
@@ -214,7 +226,7 @@ public class MongoDBVCollection implements VCollection {
 		o.putAll(_branch.getQueryObject());
 		o.putAll(example);
 		OIDInIndexFilter filter = new OIDInIndexFilter();
-		DBCursor c = _delegate.find(o, EXCLUDELIFETIME);
+		DBCursor c = _delegate.find(o, EXCLUDEHIDDENATTRS);
 		for (DBObject obj : c) {
 			if (filter.filter(obj)) {
 				if (obj instanceof Map) {
