@@ -59,25 +59,27 @@ public class IdHashMap extends AbstractIdHashCollection implements IdMap {
 		ensureCapacity(expectedSize);
 	}
 	
+	private void copyValues(long[] oldTable) {
+		for (int i = 0; i < oldTable.length; i += 2) {
+			long l = oldTable[i];
+			if (l != FREE && l != DELETED) {
+				putInternal(l, oldTable[i + 1]);
+			}
+		}
+	}
+	
 	@Override
 	protected long[] ensureCapacity(int elements) {
 		long[] oldTable = super.ensureCapacity(elements);
 		if (oldTable != null) {
-			//copy old values
-			for (int i = 0; i < oldTable.length; i += 2) {
-				long l = oldTable[i];
-				if (l != FREE && l != DELETED) {
-					putInternal(l, oldTable[i + 1]);
-				}
-			}
+			copyValues(oldTable);
 		}
 		return oldTable;
 	}
 	
 	@Override
 	protected void makeTable(int capacity) {
-		_table = new long[capacity * 2];
-		clearArray(_table);
+		super.makeTable(capacity * 2);
 	}
 	
 	@Override
@@ -116,6 +118,9 @@ public class IdHashMap extends AbstractIdHashCollection implements IdMap {
 					return old;
 				}
 			} while (_table[i] != FREE && _table[i] != DELETED);
+		}
+		if (_table[i] == DELETED) {
+			--_deleted;
 		}
 		_table[i] = key;
 		_table[i + 1] = value;
@@ -166,12 +171,21 @@ public class IdHashMap extends AbstractIdHashCollection implements IdMap {
 
 	@Override
 	public long remove(long key) {
+		long r = doRemove(key);
+		if (_deleted * 2 >= _capacity - _size) {
+			compact();
+		}
+		return r;
+	}
+	
+	private long doRemove(long key) {
 		int h0 = hash(key);
 		int h = h0 % _capacity;
 		int i = h * 2;
 		if (_table[i] == key) {
 			_table[i] = DELETED;
 			--_size;
+			++_deleted;
 			return _table[i + 1];
 		} else if (_table[i] == FREE) {
 			return 0;
@@ -187,13 +201,23 @@ public class IdHashMap extends AbstractIdHashCollection implements IdMap {
 			if (_table[i] == key) {
 				_table[i] = DELETED;
 				--_size;
+				++_deleted;
 				return _table[i + 1];
 			} else if (_table[i] == FREE) {
 				return 0;
 			}
 		}
 	}
-
+	
+	/**
+	 * Rebuilds the whole table to eliminate all cells marked as DELETED
+	 */
+	private void compact() {
+		long[] oldTable = _table;
+		makeTable(_capacity);
+		copyValues(oldTable);
+	}
+	
 	@Override
 	public long get(long key) {
 		int h0 = hash(key);

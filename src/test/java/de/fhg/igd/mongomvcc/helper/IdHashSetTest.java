@@ -190,4 +190,29 @@ public class IdHashSetTest {
 			assertEquals(j * j, a[j]);
 		}
 	}
+	
+	/**
+	 * Tests if auto-compaction works correctly
+	 */
+	@Test
+	public void compaction() {
+		//fill table with a lot of garbage, remove
+		//all items to mark all cells as deleted
+		IdSet s = new IdHashSet();
+		for (int i = 0; i < 5000; ++i) {
+			s.add(i + 2);
+		}
+		for (int i = 0; i < 5000; ++i) {
+			s.remove(i + 2);
+		}
+		for (int i = 0; i < 5000; ++i) {
+			s.add(i + 5002);
+		}
+		
+		//this should not lead to an infinite loop
+		for (int i = 0; i < 5000; ++i) {
+			assertFalse(s.contains(i + 2));
+			assertTrue(s.contains(i + 5002));
+		}
+	}
 }

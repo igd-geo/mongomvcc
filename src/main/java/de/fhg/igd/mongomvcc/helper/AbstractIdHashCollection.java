@@ -53,6 +53,11 @@ public abstract class AbstractIdHashCollection implements IdCollection {
 	protected int _size = 0;
 	
 	/**
+	 * The number of cells marked as {@link #DELETED}
+	 */
+	protected int _deleted = 0;
+	
+	/**
 	 * A factor that will be multiplied with the expected number of
 	 * elements in order to calculate the capacity
 	 */
@@ -117,6 +122,7 @@ public abstract class AbstractIdHashCollection implements IdCollection {
 	protected void makeTable(int capacity) {
 		_table = new long[capacity];
 		clearArray(_table);
+		_deleted = 0;
 	}
 	
 	/**

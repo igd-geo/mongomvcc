@@ -227,4 +227,29 @@ public class IdHashMapTest {
 			assertEquals(j, av[j - 1]);
 		}
 	}
+	
+	/**
+	 * Tests if auto-compaction works correctly
+	 */
+	@Test
+	public void compaction() {
+		//fill table with a lot of garbage, remove
+		//all items to mark all cells as deleted
+		IdMap m = new IdHashMap();
+		for (int i = 0; i < 5000; ++i) {
+			m.put(i + 2, i + 2);
+		}
+		for (int i = 0; i < 5000; ++i) {
+			m.remove(i + 2);
+		}
+		for (int i = 0; i < 5000; ++i) {
+			m.put(i + 5002, i + 5002);
+		}
+		
+		//this should not lead to an infinite loop
+		for (int i = 0; i < 5000; ++i) {
+			assertFalse(m.containsKey(i + 2));
+			assertTrue(m.containsKey(i + 5002));
+		}
+	}
 }

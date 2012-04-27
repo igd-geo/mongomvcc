@@ -59,16 +59,19 @@ public class IdHashSet extends AbstractIdHashCollection implements IdSet {
 		ensureCapacity(expectedSize);
 	}
 	
+	private void copyValues(long[] oldTable) {
+		for (long l : oldTable) {
+			if (l != FREE && l != DELETED) {
+				addInternal(l);
+			}
+		}
+	}
+	
 	@Override
 	protected long[] ensureCapacity(int elements) {
 		long[] oldTable = super.ensureCapacity(elements);
 		if (oldTable != null) {
-			//copy old values
-			for (long l : oldTable) {
-				if (l != FREE && l != DELETED) {
-					addInternal(l);
-				}
-			}
+			copyValues(oldTable);
 		}
 		return oldTable;
 	}
@@ -96,6 +99,9 @@ public class IdHashSet extends AbstractIdHashCollection implements IdSet {
 					return false;
 				}
 			} while (_table[h] != FREE && _table[h] != DELETED);
+		}
+		if (_table[h] == DELETED) {
+			--_deleted;
 		}
 		_table[h] = value;
 		return true;
@@ -143,11 +149,20 @@ public class IdHashSet extends AbstractIdHashCollection implements IdSet {
 
 	@Override
 	public boolean remove(long value) {
+		boolean r = doRemove(value);
+		if (_deleted * 2 >= _capacity - _size) {
+			compact();
+		}
+		return r;
+	}
+	
+	private boolean doRemove(long value) {
 		int h0 = hash(value);
 		int h = h0 % _capacity;
 		if (_table[h] == value) {
 			_table[h] = DELETED;
 			--_size;
+			++_deleted;
 			return true;
 		} else if (_table[h] == FREE) {
 			return false;
@@ -162,11 +177,21 @@ public class IdHashSet extends AbstractIdHashCollection implements IdSet {
 			if (_table[h] == value) {
 				_table[h] = DELETED;
 				--_size;
+				++_deleted;
 				return true;
 			} else if (_table[h] == FREE) {
 				return false;
 			}
 		}
+	}
+	
+	/**
+	 * Rebuilds the whole table to eliminate all cells marked as DELETED
+	 */
+	private void compact() {
+		long[] oldTable = _table;
+		makeTable(_capacity);
+		copyValues(oldTable);
 	}
 
 	@Override
