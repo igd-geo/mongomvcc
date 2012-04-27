@@ -17,7 +17,6 @@
 
 package de.fhg.igd.mongomvcc.impl.internal;
 
-import java.util.Calendar;
 import java.util.Map;
 
 import de.fhg.igd.mongomvcc.helper.IdMap;
@@ -64,7 +63,7 @@ public class Commit {
 	 * names to maps of UIDs and OIDs.
 	 */
 	public Commit(long cid, long parentCID, long rootCID, Map<String, IdMap> objects) {
-		this(cid, Calendar.getInstance().getTimeInMillis(), parentCID, rootCID, objects);
+		this(cid, System.currentTimeMillis(), parentCID, rootCID, objects);
 	}
 	
 	/**
