@@ -53,7 +53,7 @@ public interface VMaintenance {
 	 * commits are considered which are older than the given expiry time (i.e.
 	 * a commit which has been added just a minute ago will not be considered
 	 * if the expiry time is larger than one minute).</p>
-	 * <p><strong>Attention: this is a distructive method. Commits may
+	 * <p><strong>Attention: this is a destructive method. Commits may
 	 * seem dangling but they might still be needed by some other
 	 * thread/process. Please make sure you're absolutely sure what you are
 	 * doing before calling this method. Accidentally deleting non-dangling
