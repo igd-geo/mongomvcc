@@ -23,6 +23,7 @@ import java.util.Collections;
 import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.Mongo;
+import com.mongodb.ServerAddress;
 
 import de.fhg.igd.mongomvcc.VBranch;
 import de.fhg.igd.mongomvcc.VConstants;
@@ -70,7 +71,26 @@ public class MongoDBVDatabase implements VDatabase {
 		} catch (UnknownHostException e) {
 			throw new VException("Unknown host", e);
 		}
-		
+		connectInternal(name, mongo);
+	}
+	
+	@Override
+	public void connect(String name, int port) throws VException {
+		connect(name, ServerAddress.defaultHost(), port);
+	}
+	
+	@Override
+	public void connect(String name, String host, int port) throws VException {
+		Mongo mongo;
+		try {
+			mongo = new Mongo(new ServerAddress(host, port));
+		} catch (UnknownHostException e) {
+			throw new VException("Unknown host", e);
+		}
+		connectInternal(name, mongo);
+	}
+
+	private void connectInternal(String name, Mongo mongo) {
 		_buildInfo = initBuildInfo(mongo);
 		
 		_db = mongo.getDB(name);

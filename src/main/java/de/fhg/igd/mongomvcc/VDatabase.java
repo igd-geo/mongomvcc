@@ -44,6 +44,23 @@ public interface VDatabase {
 	void connect(String name);
 	
 	/**
+	 * Connect to a database
+	 * @param name the database name
+	 * @param port the port the database listens to
+	 * @throws VException if connection failed
+	 */
+	void connect(String name, int port);
+	
+	/**
+	 * Connect to a database running on a given host and port
+	 * @param name the database name
+	 * @param host the host the database is running on
+	 * @param port the port the database listens to
+	 * @throws VException if connection failed
+	 */
+	void connect(String name, String host, int port);
+	
+	/**
 	 * Checks out a named branch from the database
 	 * @param name the branch's name
 	 * @return the branch
