@@ -126,9 +126,13 @@ public class MongoDBVDatabase implements VDatabase {
 		if (vss.length <= 2) {
 			return null;
 		}
+		Integer maxBsonObjectSize = (Integer)cr.get("maxBsonObjectSize");
+		if (maxBsonObjectSize == null) {
+			maxBsonObjectSize = Integer.valueOf(0);
+		}
 		try {
 			return new BuildInfo(Integer.parseInt(vss[0]), Integer.parseInt(vss[1]),
-					Integer.parseInt(vss[2]));
+					Integer.parseInt(vss[2]), maxBsonObjectSize);
 		} catch (NumberFormatException e) {
 			return null;
 		}

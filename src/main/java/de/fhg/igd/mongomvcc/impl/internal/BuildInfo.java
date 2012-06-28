@@ -25,17 +25,20 @@ public class BuildInfo {
 	private final int _majorVersion;
 	private final int _minorVersion;
 	private final int _revision;
+	private final int _maxBsonObjectSize;
 	
 	/**
 	 * Constructs a new object
 	 * @param majorVersion the database's major version
 	 * @param minorVersion the database's minor version
 	 * @param revision the database's revision
+	 * @param maxBsonObjectSize the maximum size of BSON documents (can be 0 if unknown)
 	 */
-	public BuildInfo(int majorVersion, int minorVersion, int revision) {
+	public BuildInfo(int majorVersion, int minorVersion, int revision, int maxBsonObjectSize) {
 		_majorVersion = majorVersion;
 		_minorVersion = minorVersion;
 		_revision = revision;
+		_maxBsonObjectSize = maxBsonObjectSize;
 	}
 	
 	/**
@@ -57,5 +60,12 @@ public class BuildInfo {
 	 */
 	public int getRevision() {
 		return _revision;
+	}
+	
+	/**
+	 * @return the maximum size of BSON documents (can be 0 if unknown)
+	 */
+	public int getMaxBsonObjectSize() {
+		return _maxBsonObjectSize;
 	}
 }
