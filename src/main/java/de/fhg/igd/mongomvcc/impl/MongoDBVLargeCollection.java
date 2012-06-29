@@ -54,6 +54,8 @@ public class MongoDBVLargeCollection extends MongoDBVCollection implements
 		
 		@Override
 		public Iterator<Map<String, Object>> iterator() {
+			DefaultConvertStrategy cs = new DefaultConvertStrategy(_gridFS, getCounter());
+			_accessStrategy.setConvertStrategy(cs);
 			return new TransformingIterator<Map<String, Object>, Map<String, Object>>(super.iterator()) {
 				@Override
 				protected Map<String, Object> transform(Map<String, Object> input) {
