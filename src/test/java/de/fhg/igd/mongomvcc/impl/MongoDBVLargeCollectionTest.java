@@ -24,6 +24,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,11 +39,11 @@ import de.fhg.igd.mongomvcc.VCursor;
  */
 public class MongoDBVLargeCollectionTest extends AbstractMongoDBVDatabaseTest {
 	/**
-	 * Tests if large objects can be saved in the database
+	 * Tests if large objects with byte arrays/streams/buffers can be saved in the database
 	 * @throws Exception if something goes wrong
 	 */
 	@Test
-	public void largeObject() throws Exception {
+	public void largeObjectByte() throws Exception {
 		VCollection coll = _master.getLargeCollection("images");
 		byte[] test = new byte[1024 * 1024];
 		for (int i = 0; i < test.length; ++i) {
@@ -88,5 +89,41 @@ public class MongoDBVLargeCollectionTest extends AbstractMongoDBVDatabaseTest {
 		byte[] test4 = new byte[bb4.remaining()];
 		bb4.get(test4);
 		assertArrayEquals(test, test4);
+	}
+	
+	/**
+	 * Tests if large objects with float arrays/streams/buffers can be saved in the database
+	 * @throws Exception if something goes wrong
+	 */
+	@Test
+	public void largeObjectFloat() throws Exception {
+		VCollection coll = _master.getLargeCollection("images");
+		float[] test = new float[1024 * 1024];
+		for (int i = 0; i < test.length; ++i) {
+			test[i] = (byte)(i & 0xFF);
+		}
+		Map<String, Object> obj = new HashMap<String, Object>();
+		obj.put("name", "Mona Lisa");
+		obj.put("data", test);
+		coll.insert(obj);
+		
+		VCursor vc = coll.find();
+		assertEquals(1, vc.size());
+		Map<String, Object> obj2 = vc.iterator().next();
+		assertEquals("Mona Lisa", obj2.get("name"));
+		assertArrayEquals(test, (float[])obj2.get("data"), 0.00001f);
+		
+		FloatBuffer bb = FloatBuffer.wrap(test);
+		obj = new HashMap<String, Object>();
+		obj.put("name", "Mona Lisa");
+		obj.put("data", bb);
+		coll.insert(obj);
+		Map<String, Object> obj4 = coll.findOne(_factory.createDocument("uid", obj.get("uid")));
+		assertEquals("Mona Lisa", obj4.get("name"));
+		FloatBuffer bb4 = (FloatBuffer)obj4.get("data");
+		bb4.rewind();
+		float[] test4 = new float[bb4.remaining()];
+		bb4.get(test4);
+		assertArrayEquals(test, test4, 0.00001f);
 	}
 }

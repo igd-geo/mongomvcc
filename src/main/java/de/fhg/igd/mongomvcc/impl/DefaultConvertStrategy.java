@@ -17,9 +17,12 @@
 
 package de.fhg.igd.mongomvcc.impl;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +32,7 @@ import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSInputFile;
 
 import de.fhg.igd.mongomvcc.VCounter;
+import de.fhg.igd.mongomvcc.helper.FloatArrayInputStream;
 
 /**
  * The default convert strategy handles different types of binary data
@@ -42,6 +46,8 @@ public class DefaultConvertStrategy implements ConvertStrategy {
 	private static final int BYTEARRAY = 0;
 	private static final int INPUTSTREAM = 1;
 	private static final int BYTEBUFFER = 2;
+	private static final int FLOATARRAY = 3;
+	private static final int FLOATBUFFER = 4;
 	
 	/**
 	 * The metadata attribute that denotes the binary type
@@ -86,6 +92,9 @@ public class DefaultConvertStrategy implements ConvertStrategy {
 		if (data instanceof byte[]) {
 			file = _gridFS.createFile((byte[])data);
 			file.put(BINARY_TYPE, BYTEARRAY);
+		} else if (data instanceof float[]) {
+			file = _gridFS.createFile(new FloatArrayInputStream((float[])data));
+			file.put(BINARY_TYPE, FLOATARRAY);
 		} else if (data instanceof InputStream) {
 			file = _gridFS.createFile((InputStream)data);
 			file.put(BINARY_TYPE, INPUTSTREAM);
@@ -101,6 +110,18 @@ public class DefaultConvertStrategy implements ConvertStrategy {
 			}
 			file = _gridFS.createFile(buf);
 			file.put(BINARY_TYPE, BYTEBUFFER);
+		} else if (data instanceof FloatBuffer) {
+			FloatBuffer bb = (FloatBuffer)data;
+			float[] buf;
+			if (bb.hasArray()) {
+				buf = bb.array();
+			} else {
+				bb.rewind();
+				buf = new float[bb.remaining()];
+				bb.get(buf);
+			}
+			file = _gridFS.createFile(new FloatArrayInputStream(buf));
+			file.put(BINARY_TYPE, FLOATBUFFER);
 		} else {
 			return 0;
 		}
@@ -125,6 +146,10 @@ public class DefaultConvertStrategy implements ConvertStrategy {
 			r = file.getInputStream();
 		} else if (type == BYTEBUFFER) {
 			r = ByteBuffer.wrap(toByteArray(file));
+		} else if (type == FLOATARRAY) {
+			r = toFloatArray(file);
+		} else if (type == FLOATBUFFER) {
+			r = FloatBuffer.wrap(toFloatArray(file));
 		} else {
 			//no information. simply forward the input stream
 			r = file.getInputStream();
@@ -147,6 +172,23 @@ public class DefaultConvertStrategy implements ConvertStrategy {
 			int read = is.read(b, pos, len);
 			pos += read;
 			len -= read;
+		}
+		return b;
+	}
+	
+	/**
+	 * Converts the contents of a GridFS file to a float array
+	 * @param file the file
+	 * @return the float array
+	 * @throws IOException if the file could not be read
+	 */
+	private float[] toFloatArray(GridFSDBFile file) throws IOException {
+		DataInputStream is = new DataInputStream(new BufferedInputStream(
+				file.getInputStream()));
+		int len = (int)file.getLength() / (Float.SIZE / Byte.SIZE);
+		float[] b = new float[len];
+		for (int i = 0; i < len; ++i) {
+			b[i] = is.readFloat();
 		}
 		return b;
 	}
