@@ -25,10 +25,10 @@ import java.io.InputStream;
  * counter keeps track of the current position in the float
  * array and of the next byte to read. Float values are
  * automatically converted to single bytes using
- * {@link Float#floatToRawIntBits(float)} (default) or
- * {@link Float#floatToIntBits(Float)}.</p>
- * </p>Use a {@link DataInputStream} to read from
- * {@link FloatArrayInputStreams} and to restore the original
+ * <code>Float.floatToRawIntBits(float)</code> (default) or
+ * <code>Float.floatToIntBits(Float)</code>.</p>
+ * </p>Use a {@link java.io.DataInputStream} to read from
+ * {@link FloatArrayInputStream} and to restore the original
  * values.</p>
  * @author Michel Kraemer
  */
