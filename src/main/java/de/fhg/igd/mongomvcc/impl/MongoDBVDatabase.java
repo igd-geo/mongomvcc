@@ -19,10 +19,12 @@ package de.fhg.igd.mongomvcc.impl;
 
 import java.net.UnknownHostException;
 import java.util.Collections;
+import java.util.List;
 
 import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.Mongo;
+import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 
 import de.fhg.igd.mongomvcc.VBranch;
@@ -89,6 +91,27 @@ public class MongoDBVDatabase implements VDatabase {
 		}
 		connectInternal(name, mongo);
 	}
+	
+	/**
+	 * <p>Connect to a replica set. This method does not appear in the
+	 * {@link VDatabase} interface because replica sets are specific to
+	 * MongoDB. Other MVCC implementations might not have replica sets.</p>
+	 * <p>Besides we can use {@link ServerAddress} and {@link ReadPreference}
+	 * here which is not possible in the generic interface.</p>
+	 * @param name the database name
+	 * @param seeds a list of replica set members
+	 * @param readPreference the read preference for this database (can be
+	 * null if the default should be used) 
+	 */
+	public void connectToReplicaSet(String name, List<ServerAddress> seeds,
+			ReadPreference readPreference) {
+		Mongo mongo = new Mongo(seeds);
+		if (readPreference != null) {
+			mongo.setReadPreference(readPreference);
+		}
+		connectInternal(name, mongo);
+	}
+
 
 	private void connectInternal(String name, Mongo mongo) {
 		_buildInfo = initBuildInfo(mongo);

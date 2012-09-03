@@ -17,6 +17,7 @@
 
 package de.fhg.igd.mongomvcc;
 
+
 /**
  * <p>Represents a database using Multiversion Concurrency Control (MVCC). A MVCC
  * database consists of a tree which can be split up into several branches.
