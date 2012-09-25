@@ -1,2 +1,2 @@
+services: mongodb
 script: "gradle test"
-
