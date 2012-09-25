@@ -1,2 +1,2 @@
-script: "gradle -q test"
+script: "gradle test"
 
