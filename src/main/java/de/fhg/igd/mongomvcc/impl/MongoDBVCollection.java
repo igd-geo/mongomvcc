@@ -50,16 +50,6 @@ public class MongoDBVCollection implements VCollection {
 	protected final static String OID = MongoDBConstants.ID;
 	
 	/**
-	 * A {@link DBObject} that can be passed to find methods in order
-	 * to exclude the hidden fields from the result
-	 */
-	protected final static DBObject EXCLUDEHIDDENATTRS = new BasicDBObject();
-	static {
-		EXCLUDEHIDDENATTRS.put(MongoDBConstants.LIFETIME, 0);
-		EXCLUDEHIDDENATTRS.put(MongoDBConstants.TIMESTAMP, 0);
-	}
-	
-	/**
 	 * The actual MongoDB collection
 	 */
 	private final DBCollection _delegate;
@@ -181,11 +171,11 @@ public class MongoDBVCollection implements VCollection {
 		//ask MongoDB for objects with the given OIDs
 		if (objs.size() == 1) {
 			//shortcut for one object
-			return createCursor(_delegate.find(new BasicDBObject(OID, objs.values()[0]), EXCLUDEHIDDENATTRS), null);
+			return createCursor(_delegate.find(new BasicDBObject(OID, objs.values()[0])), null);
 		} else {
 			DBObject qo = new BasicDBObject();
 			qo.putAll(_branch.getQueryObject());
-			return createCursor(_delegate.find(qo, EXCLUDEHIDDENATTRS), new OIDInIndexFilter());
+			return createCursor(_delegate.find(qo), new OIDInIndexFilter());
 		}
 	}
 	
@@ -194,7 +184,7 @@ public class MongoDBVCollection implements VCollection {
 		DBObject o = new BasicDBObject();
 		o.putAll(_branch.getQueryObject());
 		o.putAll(example);
-		return createCursor(_delegate.find(o, EXCLUDEHIDDENATTRS), new OIDInIndexFilter());
+		return createCursor(_delegate.find(o), new OIDInIndexFilter());
 	}
 	
 	@Override
@@ -226,7 +216,7 @@ public class MongoDBVCollection implements VCollection {
 		o.putAll(_branch.getQueryObject());
 		o.putAll(example);
 		OIDInIndexFilter filter = new OIDInIndexFilter();
-		DBCursor c = _delegate.find(o, EXCLUDEHIDDENATTRS);
+		DBCursor c = _delegate.find(o);
 		for (DBObject obj : c) {
 			if (filter.filter(obj)) {
 				if (obj instanceof Map) {
