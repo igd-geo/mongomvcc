@@ -50,6 +50,21 @@ import de.fhg.igd.mongomvcc.VException;
  */
 public class MongoDBVCollectionTest extends AbstractMongoDBVDatabaseTest {
 	/**
+	 * Asserts equality of two documents by checking if the second
+	 * document contains all attributes of the first one and if
+	 * all attributes values are equal.
+	 * @param expected the document to compare to
+	 * @param doc the document that should be checked
+	 */
+	private static void assertDocEquals(Map<String, Object> expected, Map<String, Object> doc) {
+		for (Map.Entry<String, Object> e : expected.entrySet()) {
+			Object v = doc.get(e.getKey());
+			assertNotNull(v);
+			assertEquals(e.getValue(), v);
+		}
+	}
+	
+	/**
 	 * Tests if a person can be added into the local index
 	 */
 	@Test
@@ -60,7 +75,7 @@ public class MongoDBVCollectionTest extends AbstractMongoDBVDatabaseTest {
 		VCursor c = persons.find();
 		assertEquals(1, c.size());
 		Map<String, Object> peter2 = c.iterator().next();
-		assertEquals(peter, peter2);
+		assertDocEquals(peter, peter2);
 	}
 	
 	/**
@@ -331,7 +346,7 @@ public class MongoDBVCollectionTest extends AbstractMongoDBVDatabaseTest {
 		VCursor vc = _master.getCollection("persons").find(_factory.createDocument("name", "Peter"));
 		assertEquals(1, vc.size());
 		Map<String, Object> p2 = vc.iterator().next();
-		assertEquals(p, p2);
+		assertDocEquals(p, p2);
 	}
 	
 	/**
@@ -405,7 +420,7 @@ public class MongoDBVCollectionTest extends AbstractMongoDBVDatabaseTest {
 		persons.delete(_factory.createDocument("name", "Max"));
 		VCursor ps = persons.find();
 		assertEquals(1, ps.size());
-		assertEquals(p, ps.iterator().next());
+		assertDocEquals(p, ps.iterator().next());
 	}
 	
 	/**
