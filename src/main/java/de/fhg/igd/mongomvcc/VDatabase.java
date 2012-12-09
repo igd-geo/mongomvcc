@@ -17,6 +17,8 @@
 
 package de.fhg.igd.mongomvcc;
 
+import java.util.Map;
+
 /**
  * <p>Represents a database using Multiversion Concurrency Control (MVCC). A MVCC
  * database consists of a tree which can be split up into several branches.
@@ -59,6 +61,15 @@ public interface VDatabase {
 	 * @throws VException if connection failed
 	 */
 	void connect(String name, String host, int port);
+	
+	/**
+	 * Connect to a database within a replicationSet
+	 * @param name the database name
+	 * @param hostsWithPort the hosts and ports the database is running on
+	 * @param slaveOk true means you can read from secondaries too. false otherwise 
+	 * @throws VException if connection failed
+	 */
+	void connectToReplicaSet(String name, Map<String,Integer> hostsWithPort, boolean slaveOk);
 	
 	/**
 	 * Checks out a named branch from the database

@@ -18,7 +18,10 @@
 package de.fhg.igd.mongomvcc.impl;
 
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import com.mongodb.CommandResult;
 import com.mongodb.DB;
@@ -89,6 +92,27 @@ public class MongoDBVDatabase implements VDatabase {
 		}
 		connectInternal(name, mongo);
 	}
+	
+	@Override
+	public void connectToReplicaSet(String name, Map<String,Integer> hostsWithPort, boolean slaveOk)  throws VException {
+		Mongo mongo = null;
+		try {
+			List<ServerAddress> addrs = new ArrayList<ServerAddress>();
+			for(Map.Entry<String,Integer> e : hostsWithPort.entrySet()) {
+				 addrs.add(new ServerAddress(e.getKey(), e.getValue()));
+			}
+			mongo = new Mongo(addrs);
+			
+			if(slaveOk && mongo != null) {
+				mongo.slaveOk();
+//				mongo.setReadPreference(ReadPreference.SECONDARY); needed with version 2.2
+			}
+		} catch (UnknownHostException e) {
+			throw new VException("Unknown host", e);
+		}
+		connectInternal(name, mongo);
+	}
+
 
 	private void connectInternal(String name, Mongo mongo) {
 		_buildInfo = initBuildInfo(mongo);
