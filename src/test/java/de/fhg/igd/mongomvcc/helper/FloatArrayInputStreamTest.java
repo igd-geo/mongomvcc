@@ -48,13 +48,14 @@ public class FloatArrayInputStreamTest {
 			float f = dis.readFloat();
 			assertEquals(arr[i], f, 0.00001);
 		}
+		dis.close();
 		assertEquals(-1, dis.read());
 	}
 	
 	/**
 	 * Tests if {@link Float#NaN} values can be correctly read
 	 * from a {@link FloatArrayInputStream}
-	 * @throws Exception
+	 * @throws Exception if something goes wrong
 	 */
 	@Test
 	public void nan() throws Exception {
@@ -62,5 +63,6 @@ public class FloatArrayInputStreamTest {
 		DataInputStream dis = new DataInputStream(fais);
 		assertTrue(Float.isNaN(dis.readFloat()));
 		assertEquals(-1, dis.read());
+		dis.close();
 	}
 }
