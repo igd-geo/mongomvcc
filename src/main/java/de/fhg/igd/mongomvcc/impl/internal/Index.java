@@ -81,12 +81,15 @@ public class Index {
 			//iteratively read parent commit (if there is any)
 			stack.addLast(c);
 			long cid = c.getParentCID();
-			if (cid == 0)
+			if (cid == 0) {
 				break;
+			}
 			c = tree.resolveCommit(cid);
 		}
+
 		while (!stack.isEmpty()) {
 			c = stack.removeLast();
+			
 			//read objects from the given commit and put them into the index
 			for (Map.Entry<String, IdMap> e : c.getObjects().entrySet()) {
 				IdMap m = getObjects(e.getKey());
