@@ -27,23 +27,23 @@ public class IndexTest extends AbstractMongoDBVDatabaseTest {
 		max.put( "age", "3" );
 		persons.insert( max );
 		long first = _master.commit();
-		ArrayList< String > beforeInSession = new ArrayList<>();
+		ArrayList< String > beforeInSession = new ArrayList<String>();
 		for ( Map< String, Object > person : persons.find() )
 			beforeInSession.add( person.toString() );
 		elvis.put( "age", "4" );
 		persons.insert(elvis );
 		long second = _master.commit();
-		ArrayList< String > afterInSession = new ArrayList<>();
+		ArrayList< String > afterInSession = new ArrayList<String>();
 		for ( Map< String, Object > person : persons.find() )
 			afterInSession.add( person.toString() );
 		VBranch oldMaster = _db.checkout( first );
 		VCollection oldWells = oldMaster.getCollection( "persons" );
-		ArrayList< String > beforeOutOfSession = new ArrayList<>();
+		ArrayList< String > beforeOutOfSession = new ArrayList<String>();
 		for ( Map< String, Object > person : oldWells.find() )
 			beforeOutOfSession.add( person.toString() );
 		VBranch newMaster = _db.checkout( second );
 		VCollection newWells = newMaster.getCollection( "persons" );
-		ArrayList< String > afterOutOfSession = new ArrayList<>();
+		ArrayList< String > afterOutOfSession = new ArrayList<String>();
 		for ( Map< String, Object > person : newWells.find() )
 			afterOutOfSession.add( person.toString() );
 		assertArrayEquals( beforeInSession.toArray(), beforeOutOfSession.toArray() );
