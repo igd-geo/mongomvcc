@@ -17,6 +17,7 @@
 
 package de.fhg.igd.mongomvcc.impl.internal;
 
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -69,39 +70,48 @@ public class Index {
 	}
 	
 	/**
-	 * Recursively reads the information from the given commit and all its
+	 * Iteratively reads the information from the given commit and all its
 	 * ancestors and builds up the index
 	 * @param c the commit to read
 	 * @param tree the tree of commits
 	 */
 	private void readCommit(Commit c, Tree tree) {
-		if (c.getParentCID() != 0) {
-			//recursively read parent commit (if there is any)
-			Commit parent = tree.resolveCommit(c.getParentCID());
-			readCommit(parent, tree);
+		ArrayDeque<Commit> stack = new ArrayDeque<Commit>();
+		while (true) {
+			//iteratively read parent commit (if there is any)
+			stack.addLast(c);
+			long cid = c.getParentCID();
+			if (cid == 0) {
+				break;
+			}
+			c = tree.resolveCommit(cid);
 		}
 
-		//read objects from the given commit and put them into the index
-		for (Map.Entry<String, IdMap> e : c.getObjects().entrySet()) {
-			IdMap m = getObjects(e.getKey());
-			IdSet o = getOIDs(e.getKey());
-			IdMapIterator it = e.getValue().iterator();
-			while (it.hasNext()) {
-				it.advance();
-				if (it.value() < 0) {
-					//deleted object
-					long prev = m.get(it.key());
-					if (prev != 0) {
-						m.remove(it.key());
-						o.remove(prev);
+		while (!stack.isEmpty()) {
+			c = stack.removeLast();
+			
+			//read objects from the given commit and put them into the index
+			for (Map.Entry<String, IdMap> e : c.getObjects().entrySet()) {
+				IdMap m = getObjects(e.getKey());
+				IdSet o = getOIDs(e.getKey());
+				IdMapIterator it = e.getValue().iterator();
+				while (it.hasNext()) {
+					it.advance();
+					if (it.value() < 0) {
+						//deleted object
+						long prev = m.get(it.key());
+						if (prev != 0) {
+							m.remove(it.key());
+							o.remove(prev);
+						}
+					} else {
+						long prev = m.put(it.key(), it.value());
+						if (prev != 0) {
+							//overwrite object with new value
+							o.remove(prev);
+						}
+						o.add(it.value());
 					}
-				} else {
-					long prev = m.put(it.key(), it.value());
-					if (prev != 0) {
-						//overwrite object with new value
-						o.remove(prev);
-					}
-					o.add(it.value());
 				}
 			}
 		}
