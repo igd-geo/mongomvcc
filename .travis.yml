@@ -1,2 +1,2 @@
 services: mongodb
-script: "gradle test"
+script: "chmod +x gradlew && ./gradlew test"
