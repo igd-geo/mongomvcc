@@ -25,6 +25,7 @@ import de.fhg.igd.mongomvcc.impl.AbstractMongoDBVDatabaseTest;
 import de.fhg.igd.mongomvcc.impl.MongoDBVDatabase;
 import java.util.ArrayList;
 import java.util.Map;
+import org.junit.Ignore;
 import org.junit.Test;
 import static org.junit.Assert.assertArrayEquals;
 
@@ -93,9 +94,11 @@ public class IndexTest extends AbstractMongoDBVDatabaseTest {
 	
 	/**
 	 * This test checks if a stack overflows when there are too many commits in the database.
+	 * See https://github.com/igd-geo/mongomvcc/pull/2 for more information.
 	 * @throws StackOverflowError if the test fails
 	 */
 	@Test
+	@Ignore("Really slow. Not necessary in all situations. See GitHub issue for more information.")
 	public void stackOverflow() throws StackOverflowError {
 		VCollection persons = _master.getCollection("stack");
 		Map<String, Object> elvis = _factory.createDocument();
